@@ -15,6 +15,7 @@ export class UploadBotService implements OnModuleInit {
   public bot: Telegraf;
   private sessions: Record<number, SessionData> = {};
   private channelId: string;
+  private ownerId: string;
 
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
@@ -22,11 +23,21 @@ export class UploadBotService implements OnModuleInit {
   ) {
     this.bot = new Telegraf(this.configService.get('UPLOAD_BOT_TOKEN')!);
     this.channelId = '-1002931727367';
+    this.ownerId = '992923409';
+  }
+
+  private checkOwner(ctx: any): boolean {
+    if (ctx.from.id !== this.ownerId) {
+      ctx.reply('❌ You are not authorized to upload movies or animes.');
+      return false;
+    }
+    return true;
   }
 
   onModuleInit() {
     this.bot.start(async (ctx) => {
       try {
+        if (!this.checkOwner(ctx)) return;
         this.sessions[ctx.chat.id] = { step: 'name', data: {} };
         await ctx.reply('🎬 Send movie name:');
       } catch (err) {
