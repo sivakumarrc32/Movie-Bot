@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { Telegraf } from 'telegraf';
 import { Movie } from './movie.schema';
 import { ConfigService } from '@nestjs/config';
+import { User } from './user.schema';
 
 @Injectable()
 export class MovieBotService implements OnModuleInit {
@@ -11,6 +12,7 @@ export class MovieBotService implements OnModuleInit {
 
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
+    @InjectModel(User.name) private userModel: Model<User>,
     private configService: ConfigService,
   ) {
     this.bot = new Telegraf(this.configService.get('MOVIE_BOT_TOKEN')!);
@@ -24,6 +26,19 @@ export class MovieBotService implements OnModuleInit {
           '👋 <b>Welcome to Movie Bot!</b>\n\n🎥 Use /list to see all available movies.\n\n✨ Just type the movie name to get movie instantly!',
           { parse_mode: 'HTML' },
         );
+        const user = await this.userModel.findOne( {
+          telegramId: ctx.from.id,
+        });
+        if (!user) {
+          await this.userModel.create({
+            telegramId: ctx.from.id,
+            firstName: ctx.from.first_name,
+            lastName: ctx.from.last_name,
+            username: ctx.from.username,
+            languageCode: ctx.from.language_code,
+            isBot: ctx.from.is_bot,
+          });
+        }
       } catch (err) {
         console.error('Start command error:', err.message);
       }
