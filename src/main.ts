@@ -1,10 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import * as bodyParser from 'body-parser';
+import { Handler, Context } from 'aws-lambda';
+import serverlessExpress from '@vendia/serverless-express';
+
+let server: Handler;
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.use(bodyParser.json()); // Telegram webhook JSON body handle panna
-  await app.listen(process.env.PORT ?? 3000);
+  await app.init();
+
+  const expressApp = app.getHttpAdapter().getInstance();
+  server = serverlessExpress({ app: expressApp });
 }
+
 bootstrap();
+
+export const handler = (event: any, context: Context) => server(event, context);

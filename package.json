@@ -27,6 +27,8 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/mongoose": "^11.0.3",
     "@nestjs/platform-express": "^11.0.1",
+    "@vendia/serverless-express": "^4.12.6",
+    "aws-lambda": "^1.0.7",
     "axios": "^1.12.1",
     "express": "^5.1.0",
     "mongoose": "^8.18.1",
