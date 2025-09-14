@@ -1,7 +1,15 @@
 {
+    "version": 2,
     "functions": {
       "dist/main.js": {
+        "handler": "handler",
         "runtime": "nodejs20.x"
       }
-    }
+    },
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "/dist/main.js"
+      }
+    ]
   }
