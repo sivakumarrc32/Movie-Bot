@@ -21,7 +21,7 @@ export class MovieBotService implements OnModuleInit {
     this.bot.start(async (ctx) => {
       try {
         await ctx.reply(
-          '👋 <b>Welcome to Movie Bot!</b>\n\n🎥 Use <code>/list</code> to see all available movies.\n\n✨ Just type the movie name to get details instantly!',
+          '👋 <b>Welcome to Movie Bot!</b>\n\n🎥 Use /list to see all available movies.\n\n✨ Just type the movie name to get movie instantly!',
           { parse_mode: 'HTML' },
         );
       } catch (err) {
@@ -41,7 +41,7 @@ export class MovieBotService implements OnModuleInit {
 
         let msg = '🎬 <b>Movies List</b>:\n\n';
         movies.forEach((m, i) => (msg += `<b>${i + 1}. ${m.name}</b>\n`));
-        msg += '\n👉 Type the <b>movie name</b> to get details.';
+        msg += '\n👉 Type the <b>Movie Name</b> to get Movie.';
 
         await ctx.reply(msg, { parse_mode: 'HTML' });
       } catch (err) {
