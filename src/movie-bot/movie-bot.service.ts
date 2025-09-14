@@ -20,7 +20,10 @@ export class MovieBotService implements OnModuleInit {
     // Start command
     this.bot.start(async (ctx) => {
       try {
-        await ctx.reply('👋 Welcome!\nUse /list to see available movies.');
+        await ctx.reply(
+          '👋 <b>Welcome to Movie Bot!</b>\n\n🎥 Use <code>/list</code> to see all available movies.\n\n✨ Just type the movie name to get details instantly!',
+          { parse_mode: 'HTML' },
+        );
       } catch (err) {
         console.error('Start command error:', err.message);
       }
@@ -30,11 +33,14 @@ export class MovieBotService implements OnModuleInit {
     this.bot.command('list', async (ctx) => {
       try {
         const movies = await this.movieModel.find({}, 'name');
-        if (!movies.length) return ctx.reply('😢 No movies available.');
+        if (!movies.length)
+          return ctx.reply(
+            '<b>😢 No movies available We will Add Movies Soon.</b>',
+          );
 
-        let msg = '🎬 Movies List:\n\n';
-        movies.forEach((m, i) => (msg += `${i + 1}. ${m.name}\n`));
-        msg += '\n👉 Type the movie name to get details.';
+        let msg = '🎬 <b>Movies List</b>:\n\n';
+        movies.forEach((m, i) => (msg += `<b>${i + 1}. ${m.name}</b>\n`));
+        msg += '\n👉 Type the <b>movie name</b> to get details.';
 
         await ctx.reply(msg);
       } catch (err) {
@@ -48,7 +54,7 @@ export class MovieBotService implements OnModuleInit {
         const name = ctx.message.text.trim();
         const movie = await this.movieModel.findOne({ name });
 
-        if (!movie) return ctx.reply('❌ Movie not found. Use /list.');
+        if (!movie) return ctx.reply('❌ Movie not found. <b>Use</b> /list.');
 
         if (movie.poster?.chatId && movie.poster?.messageId) {
           await ctx.telegram.forwardMessage(
@@ -70,7 +76,10 @@ export class MovieBotService implements OnModuleInit {
           }
         }
 
-        await ctx.reply(`✅ Movie "${movie.name}" sent successfully!`);
+        await ctx.reply(
+          `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching!`,
+          { parse_mode: 'HTML' },
+        );
       } catch (err) {
         console.error('Movie search error:', err.message);
       }
