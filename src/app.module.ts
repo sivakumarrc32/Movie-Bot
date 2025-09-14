@@ -3,6 +3,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UploadBotModule } from './upload-bot/upload-bot.module';
 import { MovieBotModule } from './movie-bot/movie-bot.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AppService } from './app.service';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -16,5 +18,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     UploadBotModule,
     MovieBotModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
