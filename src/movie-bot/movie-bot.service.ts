@@ -36,13 +36,14 @@ export class MovieBotService implements OnModuleInit {
         if (!movies.length)
           return ctx.reply(
             '<b>😢 No movies available We will Add Movies Soon.</b>',
+            { parse_mode: 'HTML' },
           );
 
         let msg = '🎬 <b>Movies List</b>:\n\n';
         movies.forEach((m, i) => (msg += `<b>${i + 1}. ${m.name}</b>\n`));
         msg += '\n👉 Type the <b>movie name</b> to get details.';
 
-        await ctx.reply(msg);
+        await ctx.reply(msg, { parse_mode: 'HTML' });
       } catch (err) {
         console.error('/list command error:', err.message);
       }
@@ -54,7 +55,10 @@ export class MovieBotService implements OnModuleInit {
         const name = ctx.message.text.trim();
         const movie = await this.movieModel.findOne({ name });
 
-        if (!movie) return ctx.reply('❌ Movie not found. <b>Use</b> /list.');
+        if (!movie)
+          return ctx.reply('❌ Movie not found. <b>Use</b> /list.', {
+            parse_mode: 'HTML',
+          });
 
         if (movie.poster?.chatId && movie.poster?.messageId) {
           await ctx.telegram.forwardMessage(
