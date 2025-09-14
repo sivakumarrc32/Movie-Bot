@@ -16,7 +16,7 @@ export class UploadBotService implements OnModuleInit {
   public bot: Telegraf;
   private sessions: Record<number, SessionData> = {};
   private channelId: string;
-  private ownerId: string;
+  private ownerId: number;
 
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
@@ -24,7 +24,7 @@ export class UploadBotService implements OnModuleInit {
   ) {
     this.bot = new Telegraf(this.configService.get('UPLOAD_BOT_TOKEN')!);
     this.channelId = '-1002931727367';
-    this.ownerId = '992923409';
+    this.ownerId = 992923409;
   }
 
   private checkOwner(ctx: any): boolean {
