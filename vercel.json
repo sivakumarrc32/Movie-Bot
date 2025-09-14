@@ -1,14 +1,17 @@
 {
-  "version": 2,
-  "functions": {
-    "dist/main.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/dist/main.js"
-    }
-  ]
-}
+    "version": 2,
+    "builds": [
+      { 
+        "src": "dist/main.js", 
+        "use": "@vercel/node" 
+      }
+    ],
+    "routes": [
+      { 
+        "src": "dist/main.js", 
+        "dest": "dist/main.js", 
+        "method": ["GET", "POST"] 
+      }
+    ]
+  }
+  
