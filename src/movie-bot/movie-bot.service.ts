@@ -26,7 +26,7 @@ export class MovieBotService implements OnModuleInit {
           '👋 <b>Welcome to Movie Bot!</b>\n\n🎥 Use /list to see all available movies.\n\n✨ Just type the movie name to get movie instantly!',
           { parse_mode: 'HTML' },
         );
-        const user = await this.userModel.findOne( {
+        const user = await this.userModel.findOne({
           telegramId: ctx.from.id,
         });
         if (!user) {
@@ -42,6 +42,10 @@ export class MovieBotService implements OnModuleInit {
       } catch (err) {
         console.error('Start command error:', err.message);
       }
+    });
+
+    this.bot.on('message', (ctx) => {
+      console.log(ctx.message);
     });
 
     // /list command
