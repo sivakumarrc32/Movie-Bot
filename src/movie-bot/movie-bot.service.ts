@@ -44,25 +44,26 @@ export class MovieBotService implements OnModuleInit {
       }
     });
 
-    this.bot.on('message', (ctx) => {
-      console.log(ctx.message);
-    });
-
     // /list command
     this.bot.command('list', async (ctx) => {
       try {
+        const anime = await ctx.replyWithAnimation(
+          'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
+        );
         const movies = await this.movieModel.find({}, 'name');
-        if (!movies.length)
+        if (!movies.length) {
+          await ctx.deleteMessage(anime.message_id);
           return ctx.reply(
             '<b>😢 No movies available We will Add Movies Soon.</b>',
             { parse_mode: 'HTML' },
           );
-
+        }
         let msg = '🎬 <b>Movies List</b>:\n\n';
         movies.forEach((m, i) => (msg += `<b>${i + 1}. ${m.name}</b>\n`));
         msg += '\n👉 Type the <b>Movie Name</b> to get Movie.';
 
         await ctx.reply(msg, { parse_mode: 'HTML' });
+        await ctx.deleteMessage(anime.message_id);
       } catch (err) {
         console.error('/list command error:', err.message);
       }
@@ -71,14 +72,18 @@ export class MovieBotService implements OnModuleInit {
     // Handle movie search
     this.bot.on('text', async (ctx) => {
       try {
+        const anime = await ctx.replyWithAnimation(
+          'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
+        );
         const name = ctx.message.text.trim();
         const movie = await this.movieModel.findOne({ name });
 
-        if (!movie)
+        if (!movie) {
+          await ctx.deleteMessage(anime.message_id);
           return ctx.reply('❌ Movie not found. <b>Use</b> /list.', {
             parse_mode: 'HTML',
           });
-
+        }
         if (movie.poster?.chatId && movie.poster?.messageId) {
           await ctx.telegram.forwardMessage(
             ctx.chat.id,
@@ -98,6 +103,8 @@ export class MovieBotService implements OnModuleInit {
             console.error('File forward error:', err.message);
           }
         }
+
+        await ctx.deleteMessage(anime.message_id);
 
         await ctx.reply(
           `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching!`,
