@@ -84,6 +84,16 @@ export class MovieBotService implements OnModuleInit {
       }
     });
 
+    this.bot.command('broadcast', async (ctx) => {
+      console.log('Broadcast command called');
+      if (!this.checkOwner(ctx)) return;
+      console.log('Broadcast command authorized');
+      const text = ctx.message.text.split(' ').slice(1).join(' ');
+      if (!text) return ctx.reply('⚠️ Please provide a message.');
+      await this.sendBroadcast(text);
+      await ctx.reply('✅ Broadcast sent!');
+    });
+
     // Handle movie search
     this.bot.on('text', async (ctx) => {
       if (ctx.message.text.startsWith('/')) return;
@@ -131,16 +141,6 @@ export class MovieBotService implements OnModuleInit {
       } catch (err) {
         console.error('Movie search error:', err.message);
       }
-    });
-
-    this.bot.command('broadcast', async (ctx) => {
-      console.log('Broadcast command called');
-      if (!this.checkOwner(ctx)) return;
-      console.log('Broadcast command authorized');
-      const text = ctx.message.text.split(' ').slice(1).join(' ');
-      if (!text) return ctx.reply('⚠️ Please provide a message.');
-      await this.sendBroadcast(text);
-      await ctx.reply('✅ Broadcast sent!');
     });
   }
 
