@@ -86,6 +86,7 @@ export class MovieBotService implements OnModuleInit {
 
     // Handle movie search
     this.bot.on('text', async (ctx) => {
+      if (ctx.message.text.startsWith('/')) return;
       const anime = await ctx.replyWithAnimation(
         'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
       );
