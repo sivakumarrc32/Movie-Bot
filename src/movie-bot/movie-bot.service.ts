@@ -9,6 +9,7 @@ import { User } from './user.schema';
 @Injectable()
 export class MovieBotService implements OnModuleInit {
   public bot: Telegraf;
+  public ownerId: number;
 
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
@@ -16,6 +17,20 @@ export class MovieBotService implements OnModuleInit {
     private configService: ConfigService,
   ) {
     this.bot = new Telegraf(this.configService.get('MOVIE_BOT_TOKEN')!);
+    this.ownerId = 992923409;
+  }
+
+  private checkOwner(ctx: any): boolean {
+    if (ctx.from.id !== this.ownerId) {
+      ctx.reply(
+        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie_bot Here You Can Get the Movies',
+        {
+          parse_mode: 'HTML',
+        },
+      );
+      return false;
+    }
+    return true;
   }
 
   onModuleInit() {
@@ -116,5 +131,36 @@ export class MovieBotService implements OnModuleInit {
         console.error('Movie search error:', err.message);
       }
     });
+
+    this.bot.command('broadcast', async (ctx) => {
+      if (!this.checkOwner(ctx)) return;
+      const text = ctx.message.text.split(' ').slice(1).join(' ');
+      if (!text) return ctx.reply('⚠️ Please provide a message.');
+      await this.sendBroadcast(text);
+      await ctx.reply('✅ Broadcast sent!');
+    });
+  }
+
+  async sendBroadcast(message: string) {
+    try {
+      const users = await this.userModel.find({}, 'telegramId');
+
+      for (const user of users) {
+        try {
+          await this.bot.telegram.sendMessage(user.telegramId, message, {
+            parse_mode: 'HTML',
+          });
+        } catch (err) {
+          console.error(
+            `❌ Could not send to ${user.telegramId}:`,
+            err.message,
+          );
+        }
+      }
+
+      console.log(`✅ Broadcast sent to ${users.length} users`);
+    } catch (err) {
+      console.error('Broadcast error:', err.message);
+    }
   }
 }
