@@ -46,10 +46,10 @@ export class MovieBotService implements OnModuleInit {
 
     // /list command
     this.bot.command('list', async (ctx) => {
+      const anime = await ctx.replyWithAnimation(
+        'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
+      );
       try {
-        const anime = await ctx.replyWithAnimation(
-          'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
-        );
         const movies = await this.movieModel.find({}, 'name');
         if (!movies.length) {
           await ctx.deleteMessage(anime.message_id);
@@ -71,12 +71,14 @@ export class MovieBotService implements OnModuleInit {
 
     // Handle movie search
     this.bot.on('text', async (ctx) => {
+      const anime = await ctx.replyWithAnimation(
+        'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
+      );
       try {
-        const anime = await ctx.replyWithAnimation(
-          'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
-        );
         const name = ctx.message.text.trim();
-        const movie = await this.movieModel.findOne({ name });
+        const movie = await this.movieModel.findOne({
+          name: { $regex: name, $options: 'i' },
+        });
 
         if (!movie) {
           await ctx.deleteMessage(anime.message_id);
