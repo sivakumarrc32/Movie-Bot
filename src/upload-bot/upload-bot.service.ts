@@ -140,9 +140,9 @@ export class UploadBotService implements OnModuleInit {
             const movie = new this.movieModel(session.data);
             await movie.save();
             await this.movieBotService.sendBroadcast(
-              `✨ <i><b>${movie.name}</b></i> Movie Added! ✨\n` +
-                `👉 Type the <b>Movie Name</b> and get the file instantly.\n` +
-                `🍿 Enjoy Watching!\n` +
+              `✨ <i><b>${movie.name}</b></i> Movie Added! ✨\n\n` +
+                `👉 Type the <b>Movie Name</b> and get the file instantly.\n\n` +
+                `🍿 Enjoy Watching!\n\n` +
                 `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a>`,
             );
             await ctx.reply('✅ Movie uploaded successfully!');
