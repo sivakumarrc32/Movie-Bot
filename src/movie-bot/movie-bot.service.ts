@@ -134,7 +134,9 @@ export class MovieBotService implements OnModuleInit {
     });
 
     this.bot.command('broadcast', async (ctx) => {
+      console.log('Broadcast command called');
       if (!this.checkOwner(ctx)) return;
+      console.log('Broadcast command authorized');
       const text = ctx.message.text.split(' ').slice(1).join(' ');
       if (!text) return ctx.reply('⚠️ Please provide a message.');
       await this.sendBroadcast(text);
