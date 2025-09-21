@@ -159,7 +159,7 @@ export class MovieBotService implements OnModuleInit {
             movie.poster.messageId,
           );
           sentMessages.push({
-            chatId: posterMsg.chat.id,
+            chatId: ctx.chat.id,
             messageId: posterMsg.message_id,
           });
         }
@@ -173,7 +173,7 @@ export class MovieBotService implements OnModuleInit {
               file.messageId,
             );
             sentMessages.push({
-              chatId: fileMsg.chat.id,
+              chatId: ctx.chat.id,
               messageId: fileMsg.message_id,
             });
           } catch (err) {
@@ -188,7 +188,7 @@ export class MovieBotService implements OnModuleInit {
           { parse_mode: 'HTML' },
         );
         sentMessages.push({
-          chatId: successMsg.chat.id,
+          chatId: ctx.chat.id,
           messageId: successMsg.message_id,
         });
         // this.globalSentMessages.push(...sentMessages);
