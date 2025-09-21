@@ -5,21 +5,17 @@ import { Telegraf } from 'telegraf';
 import { Movie } from './movie.schema';
 import { ConfigService } from '@nestjs/config';
 import { User } from './user.schema';
+import { TempMessage } from './temp.schema';
 
 @Injectable()
 export class MovieBotService implements OnModuleInit {
   public bot: Telegraf;
   public ownerId: number;
-  private userSentMessages: Record<
-    number,
-    { chatId: number; messageId: number }[]
-  > = {};
-  // private globalSentMessages: { chatId: number; messageId: number }[] = [];
-  // private deletionScheduled = false;
 
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
     @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(TempMessage.name) private tempMessageModel: Model<TempMessage>,
     private configService: ConfigService,
   ) {
     this.bot = new Telegraf(this.configService.get('MOVIE_BOT_TOKEN')!);
@@ -38,29 +34,6 @@ export class MovieBotService implements OnModuleInit {
     }
     return true;
   }
-
-  // private scheduleGlobalDeletion() {
-  //   if (this.deletionScheduled) return; // Already scheduled
-
-  //   this.deletionScheduled = true;
-  //   setTimeout(
-  //     async () => {
-  //       try {
-  //         for (const msg of this.globalSentMessages) {
-  //           await this.bot.telegram
-  //             .deleteMessage(msg.chatId, msg.messageId)
-  //             .catch(() => null);
-  //         }
-  //         // Clear after deletion
-  //         this.globalSentMessages = [];
-  //         this.deletionScheduled = false; // reset
-  //       } catch (err) {
-  //         console.error('Global auto delete error:', err.message);
-  //       }
-  //     },
-  //     5 * 60 * 1000,
-  //   ); // 5 minutes
-  // }
 
   onModuleInit() {
     // Start command
@@ -170,19 +143,15 @@ export class MovieBotService implements OnModuleInit {
 
         // Files
         for (const file of movie.files) {
-          try {
-            const fileMsg = await ctx.telegram.forwardMessage(
-              ctx.chat.id,
-              file.chatId,
-              file.messageId,
-            );
-            sentMessages.push({
-              chatId: ctx.chat.id,
-              messageId: fileMsg.message_id,
-            });
-          } catch (err) {
-            console.error('File forward error:', err.message);
-          }
+          const fileMsg = await ctx.telegram.forwardMessage(
+            ctx.chat.id,
+            file.chatId,
+            file.messageId,
+          );
+          sentMessages.push({
+            chatId: ctx.chat.id,
+            messageId: fileMsg.message_id,
+          });
         }
 
         await ctx.deleteMessage(anime.message_id);
@@ -195,26 +164,16 @@ export class MovieBotService implements OnModuleInit {
           chatId: ctx.chat.id,
           messageId: successMsg.message_id,
         });
+        const expireAt = new Date(Date.now() + 1 * 60 * 1000);
 
-        this.userSentMessages[ctx.from.id] = sentMessages;
-        // this.globalSentMessages.push(...sentMessages);
-        // this.scheduleGlobalDeletion();
-        setTimeout(
-          async () => {
-            const messagesToDelete = this.userSentMessages[ctx.from.id];
-            if (!messagesToDelete) return;
-
-            for (const msg of messagesToDelete) {
-              await ctx.telegram
-                .deleteMessage(msg.chatId, msg.messageId)
-                .catch(() => null);
-            }
-
-            // Clear after deletion
-            delete this.userSentMessages[ctx.from.id];
-          },
-          1 * 60 * 1000,
-        );
+        for (const msg of sentMessages) {
+          await this.tempMessageModel.create({
+            chatId: msg.chatId,
+            messageId: msg.messageId,
+            userId: ctx.from.id,
+            expireAt,
+          });
+        }
       } catch (err) {
         console.error('Movie search error:', err.message);
       }
