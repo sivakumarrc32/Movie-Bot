@@ -139,13 +139,13 @@ export class UploadBotService implements OnModuleInit {
           try {
             const movie = new this.movieModel(session.data);
             await movie.save();
-            await this.movieBotService.sendBroadcast(
-              `✨ <i><b>${movie.name}</b></i> Movie Added! ✨\n\n` +
-                `👉 Type the <b>Movie Name</b> and get the file instantly.\n\n` +
-                `🍿 Enjoy Watching!\n\n` +
-                `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n` +
-                `📢 Join Channel: <a href="https://t.me/Cinemxtic_Univerz">CINEMATIC UNIVERSE!</a> \n\n`,
-            );
+            // await this.movieBotService.sendBroadcast(
+            //   `✨ <i><b>${movie.name}</b></i> Movie Added! ✨\n\n` +
+            //     `👉 Type the <b>Movie Name</b> and get the file instantly.\n\n` +
+            //     `🍿 Enjoy Watching!\n\n` +
+            //     `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n` +
+            //     `📢 Join Channel: <a href="https://t.me/Cinemxtic_Univerz">CINEMATIC UNIVERSE!</a> \n\n`,
+            // );
             await ctx.reply('✅ Movie uploaded successfully!');
           } catch (dbErr) {
             console.error('DB save error:', dbErr.message);

@@ -64,6 +64,10 @@ export class MovieBotService implements OnModuleInit {
       }
     });
 
+    this.bot.on('message', (ctx) => {
+      console.log(ctx.message);
+    });
+
     // /list command
     this.bot.command('list', async (ctx) => {
       const anime = await ctx.replyWithAnimation(
@@ -89,15 +93,15 @@ export class MovieBotService implements OnModuleInit {
       }
     });
 
-    this.bot.command('broadcast', async (ctx) => {
-      console.log('Broadcast command called');
-      if (!this.checkOwner(ctx)) return;
-      console.log('Broadcast command authorized');
-      const text = ctx.message.text.split(' ').slice(1).join(' ');
-      if (!text) return ctx.reply('⚠️ Please provide a message.');
-      await this.sendBroadcast(text);
-      await ctx.reply('✅ Broadcast sent!');
-    });
+    // this.bot.command('broadcast', async (ctx) => {
+    //   console.log('Broadcast command called');
+    //   if (!this.checkOwner(ctx)) return;
+    //   console.log('Broadcast command authorized');
+    //   const text = ctx.message.text.split(' ').slice(1).join(' ');
+    //   if (!text) return ctx.reply('⚠️ Please provide a message.');
+    //   await this.sendBroadcast(text);
+    //   await ctx.reply('✅ Broadcast sent!');
+    // });
 
     // Handle movie search
     this.bot.on('text', async (ctx) => {
@@ -173,26 +177,26 @@ export class MovieBotService implements OnModuleInit {
     });
   }
 
-  async sendBroadcast(message: string) {
-    try {
-      const users = await this.userModel.find({}, 'telegramId');
+  // async sendBroadcast(message: string) {
+  //   try {
+  //     const users = await this.userModel.find({}, 'telegramId');
 
-      for (const user of users) {
-        try {
-          await this.bot.telegram.sendMessage(user.telegramId, message, {
-            parse_mode: 'HTML',
-          });
-        } catch (err) {
-          console.error(
-            `❌ Could not send to ${user.telegramId}:`,
-            err.message,
-          );
-        }
-      }
+  //     for (const user of users) {
+  //       try {
+  //         await this.bot.telegram.sendMessage(user.telegramId, message, {
+  //           parse_mode: 'HTML',
+  //         });
+  //       } catch (err) {
+  //         console.error(
+  //           `❌ Could not send to ${user.telegramId}:`,
+  //           err.message,
+  //         );
+  //       }
+  //     }
 
-      console.log(`✅ Broadcast sent to ${users.length} users`);
-    } catch (err) {
-      console.error('Broadcast error:', err.message);
-    }
-  }
+  //     console.log(`✅ Broadcast sent to ${users.length} users`);
+  //   } catch (err) {
+  //     console.error('Broadcast error:', err.message);
+  //   }
+  // }
 }
