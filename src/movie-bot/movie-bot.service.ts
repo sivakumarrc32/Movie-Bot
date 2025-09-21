@@ -164,7 +164,7 @@ export class MovieBotService implements OnModuleInit {
           chatId: ctx.chat.id,
           messageId: successMsg.message_id,
         });
-        const expireAt = new Date(Date.now() + 1 * 60 * 1000);
+        const expireAt = new Date(Date.now() + 5 * 60 * 1000);
 
         for (const msg of sentMessages) {
           await this.tempMessageModel.create({
