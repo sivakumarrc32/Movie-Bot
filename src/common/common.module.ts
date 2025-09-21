@@ -6,6 +6,7 @@ import { User, UserSchema } from 'src/movie-bot/user.schema';
 import { TempMessage, TempMessageSchema } from 'src/movie-bot/temp.schema';
 import { ConfigService } from '@nestjs/config';
 import { MovieBotService } from 'src/movie-bot/movie-bot.service';
+// import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
