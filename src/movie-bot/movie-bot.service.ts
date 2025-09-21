@@ -174,7 +174,7 @@ export class MovieBotService implements OnModuleInit {
         setTimeout(
           async () => {
             try {
-              for (const id of sentMessages) {
+              for (const id of globalSentMessages) {
                 await this.bot.telegram
                   .deleteMessage(id.chatId, id.messageId)
                   .catch(() => null);
