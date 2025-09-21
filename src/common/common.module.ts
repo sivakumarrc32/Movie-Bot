@@ -5,6 +5,7 @@ import { Movie, MovieSchema } from 'src/movie-bot/movie.schema';
 import { User, UserSchema } from 'src/movie-bot/user.schema';
 import { TempMessage, TempMessageSchema } from 'src/movie-bot/temp.schema';
 import { ConfigService } from '@nestjs/config';
+import { MovieBotService } from 'src/movie-bot/movie-bot.service';
 
 @Module({
   imports: [
@@ -14,6 +15,6 @@ import { ConfigService } from '@nestjs/config';
       { name: TempMessage.name, schema: TempMessageSchema },
     ]),
   ],
-  providers: [CommonService, ConfigService],
+  providers: [CommonService, ConfigService, MovieBotService],
 })
 export class CommonModule {}
