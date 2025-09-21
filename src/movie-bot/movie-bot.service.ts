@@ -10,6 +10,10 @@ import { User } from './user.schema';
 export class MovieBotService implements OnModuleInit {
   public bot: Telegraf;
   public ownerId: number;
+  private userSentMessages: Record<
+    number,
+    { chatId: number; messageId: number }[]
+  > = {};
   // private globalSentMessages: { chatId: number; messageId: number }[] = [];
   // private deletionScheduled = false;
 
@@ -191,19 +195,23 @@ export class MovieBotService implements OnModuleInit {
           chatId: ctx.chat.id,
           messageId: successMsg.message_id,
         });
+
+        this.userSentMessages[ctx.from.id] = sentMessages;
         // this.globalSentMessages.push(...sentMessages);
         // this.scheduleGlobalDeletion();
         setTimeout(
           async () => {
-            try {
-              for (const msg of sentMessages) {
-                await ctx.telegram
-                  .deleteMessage(msg.chatId, msg.messageId)
-                  .catch(() => null);
-              }
-            } catch (err) {
-              console.error('Auto delete error:', err.message);
+            const messagesToDelete = this.userSentMessages[ctx.from.id];
+            if (!messagesToDelete) return;
+
+            for (const msg of messagesToDelete) {
+              await ctx.telegram
+                .deleteMessage(msg.chatId, msg.messageId)
+                .catch(() => null);
             }
+
+            // Clear after deletion
+            delete this.userSentMessages[ctx.from.id];
           },
           1 * 60 * 1000,
         );
