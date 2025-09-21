@@ -103,6 +103,8 @@ export class MovieBotService implements OnModuleInit {
       await ctx.reply('✅ Broadcast sent!');
     });
 
+    const globalSentMessages: { chatId: number; messageId: number }[] = [];
+
     // Handle movie search
     this.bot.on('text', async (ctx) => {
       if (ctx.message.text.startsWith('/')) return;
@@ -124,7 +126,7 @@ export class MovieBotService implements OnModuleInit {
           });
         }
 
-        const sentMessages: number[] = [];
+        const sentMessages: { chatId: number; messageId: number }[] = [];
 
         // Poster
         if (movie.poster?.chatId && movie.poster?.messageId) {
@@ -133,7 +135,10 @@ export class MovieBotService implements OnModuleInit {
             movie.poster.chatId,
             movie.poster.messageId,
           );
-          sentMessages.push(posterMsg.message_id);
+          sentMessages.push({
+            chatId: posterMsg.chat.id,
+            messageId: posterMsg.message_id,
+          });
         }
 
         // Files
@@ -144,7 +149,10 @@ export class MovieBotService implements OnModuleInit {
               file.chatId,
               file.messageId,
             );
-            sentMessages.push(fileMsg.message_id);
+            sentMessages.push({
+              chatId: fileMsg.chat.id,
+              messageId: fileMsg.message_id,
+            });
           } catch (err) {
             console.error('File forward error:', err.message);
           }
@@ -153,23 +161,29 @@ export class MovieBotService implements OnModuleInit {
         await ctx.deleteMessage(anime.message_id);
 
         const successMsg = await ctx.reply(
-          `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching. \n\n\n <b>⏳ Files Will be Deleted After 15 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
+          `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching. \n\n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
           { parse_mode: 'HTML' },
         );
-        sentMessages.push(successMsg.message_id);
+        sentMessages.push({
+          chatId: successMsg.chat.id,
+          messageId: successMsg.message_id,
+        });
+        globalSentMessages.push(...sentMessages);
 
         // 🕒 Auto delete after 15 mins (900,000 ms)
         setTimeout(
           async () => {
             try {
               for (const id of sentMessages) {
-                await ctx.deleteMessage(id).catch(() => null);
+                await this.bot.telegram
+                  .deleteMessage(id.chatId, id.messageId)
+                  .catch(() => null);
               }
             } catch (err) {
               console.error('Auto delete error:', err.message);
             }
           },
-          15 * 60 * 1000,
+          5 * 60 * 1000,
         );
       } catch (err) {
         console.error('Movie search error:', err.message);
