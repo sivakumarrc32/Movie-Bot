@@ -10,6 +10,8 @@ import { User } from './user.schema';
 export class MovieBotService implements OnModuleInit {
   public bot: Telegraf;
   public ownerId: number;
+  // private globalSentMessages: { chatId: number; messageId: number }[] = [];
+  // private deletionScheduled = false;
 
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
@@ -32,6 +34,29 @@ export class MovieBotService implements OnModuleInit {
     }
     return true;
   }
+
+  // private scheduleGlobalDeletion() {
+  //   if (this.deletionScheduled) return; // Already scheduled
+
+  //   this.deletionScheduled = true;
+  //   setTimeout(
+  //     async () => {
+  //       try {
+  //         for (const msg of this.globalSentMessages) {
+  //           await this.bot.telegram
+  //             .deleteMessage(msg.chatId, msg.messageId)
+  //             .catch(() => null);
+  //         }
+  //         // Clear after deletion
+  //         this.globalSentMessages = [];
+  //         this.deletionScheduled = false; // reset
+  //       } catch (err) {
+  //         console.error('Global auto delete error:', err.message);
+  //       }
+  //     },
+  //     5 * 60 * 1000,
+  //   ); // 5 minutes
+  // }
 
   onModuleInit() {
     // Start command
@@ -103,8 +128,6 @@ export class MovieBotService implements OnModuleInit {
       await ctx.reply('✅ Broadcast sent!');
     });
 
-    const globalSentMessages: { chatId: number; messageId: number }[] = [];
-
     // Handle movie search
     this.bot.on('text', async (ctx) => {
       if (ctx.message.text.startsWith('/')) return;
@@ -168,22 +191,21 @@ export class MovieBotService implements OnModuleInit {
           chatId: successMsg.chat.id,
           messageId: successMsg.message_id,
         });
-        globalSentMessages.push(...sentMessages);
-
-        // 🕒 Auto delete after 15 mins (900,000 ms)
+        // this.globalSentMessages.push(...sentMessages);
+        // this.scheduleGlobalDeletion();
         setTimeout(
           async () => {
             try {
-              for (const id of globalSentMessages) {
-                await this.bot.telegram
-                  .deleteMessage(id.chatId, id.messageId)
+              for (const msg of sentMessages) {
+                await ctx.telegram
+                  .deleteMessage(msg.chatId, msg.messageId)
                   .catch(() => null);
               }
             } catch (err) {
               console.error('Auto delete error:', err.message);
             }
           },
-          5 * 60 * 1000,
+          1 * 60 * 1000,
         );
       } catch (err) {
         console.error('Movie search error:', err.message);
