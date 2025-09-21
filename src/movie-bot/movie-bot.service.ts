@@ -38,10 +38,10 @@ export class MovieBotService implements OnModuleInit {
     this.bot.start(async (ctx) => {
       try {
         await ctx.replyWithAnimation(
-          { source: '../../tenor.gif' }, // Local file
+          'CgACAgUAAxkBAAICL2jP7zdwPsDQ8Kocl6nQ1ZXrjI1gAAJYGwACybiAVlKUd15e35cCNgQ', // Local file
           {
             caption:
-              '👋 <b>Welcome to Movie Bot!</b>\n\n🎥 Use /list to see all available movies.\n\n✨ Just type the movie name to get movie instantly!',
+              '👋 <b>Welcome to Movie Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 🎥 /list -Use this command to see all available movies.\n\n✨ Just type the movie name to get movie instantly!',
             parse_mode: 'HTML',
           },
         );
@@ -64,9 +64,9 @@ export class MovieBotService implements OnModuleInit {
       }
     });
 
-    this.bot.on('message', (ctx) => {
-      console.log(ctx.message);
-    });
+    // this.bot.on('message', (ctx) => {
+    //   console.log(ctx.message);
+    // });
 
     // /list command
     this.bot.command('list', async (ctx) => {
@@ -93,15 +93,15 @@ export class MovieBotService implements OnModuleInit {
       }
     });
 
-    // this.bot.command('broadcast', async (ctx) => {
-    //   console.log('Broadcast command called');
-    //   if (!this.checkOwner(ctx)) return;
-    //   console.log('Broadcast command authorized');
-    //   const text = ctx.message.text.split(' ').slice(1).join(' ');
-    //   if (!text) return ctx.reply('⚠️ Please provide a message.');
-    //   await this.sendBroadcast(text);
-    //   await ctx.reply('✅ Broadcast sent!');
-    // });
+    this.bot.command('broadcast', async (ctx) => {
+      console.log('Broadcast command called');
+      if (!this.checkOwner(ctx)) return;
+      console.log('Broadcast command authorized');
+      const text = ctx.message.text.split(' ').slice(1).join(' ');
+      if (!text) return ctx.reply('⚠️ Please provide a message.');
+      await this.sendBroadcast(text);
+      await ctx.reply('✅ Broadcast sent!');
+    });
 
     // Handle movie search
     this.bot.on('text', async (ctx) => {
@@ -153,7 +153,7 @@ export class MovieBotService implements OnModuleInit {
         await ctx.deleteMessage(anime.message_id);
 
         const successMsg = await ctx.reply(
-          `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching. \n\n\n <b>⏳ Files Will be Deleted After 15 Mins</b> \n\n\n <h3>Please Forward to Anywhere </h3>`,
+          `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching. \n\n\n <b>⏳ Files Will be Deleted After 15 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
           { parse_mode: 'HTML' },
         );
         sentMessages.push(successMsg.message_id);
@@ -177,26 +177,26 @@ export class MovieBotService implements OnModuleInit {
     });
   }
 
-  // async sendBroadcast(message: string) {
-  //   try {
-  //     const users = await this.userModel.find({}, 'telegramId');
+  async sendBroadcast(message: string) {
+    try {
+      const users = await this.userModel.find({}, 'telegramId');
 
-  //     for (const user of users) {
-  //       try {
-  //         await this.bot.telegram.sendMessage(user.telegramId, message, {
-  //           parse_mode: 'HTML',
-  //         });
-  //       } catch (err) {
-  //         console.error(
-  //           `❌ Could not send to ${user.telegramId}:`,
-  //           err.message,
-  //         );
-  //       }
-  //     }
+      for (const user of users) {
+        try {
+          await this.bot.telegram.sendMessage(user.telegramId, message, {
+            parse_mode: 'HTML',
+          });
+        } catch (err) {
+          console.error(
+            `❌ Could not send to ${user.telegramId}:`,
+            err.message,
+          );
+        }
+      }
 
-  //     console.log(`✅ Broadcast sent to ${users.length} users`);
-  //   } catch (err) {
-  //     console.error('Broadcast error:', err.message);
-  //   }
-  // }
+      console.log(`✅ Broadcast sent to ${users.length} users`);
+    } catch (err) {
+      console.error('Broadcast error:', err.message);
+    }
+  }
 }
