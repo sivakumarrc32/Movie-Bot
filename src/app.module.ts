@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { AppController } from './app.controller';
 import { CommonModule } from './common/common.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { CommonController } from './common/common.controller';
 
 @Module({
   imports: [

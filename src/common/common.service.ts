@@ -15,7 +15,7 @@ export class CommonService {
     private configService: ConfigService,
     private movieBotService: MovieBotService,
   ) {}
-  @Cron(CronExpression.EVERY_MINUTE)
+  // @Cron(CronExpression.EVERY_MINUTE)
   async handleExpiredMessages() {
     const now = new Date();
     const messages = await this.tempMessageModel.find({
