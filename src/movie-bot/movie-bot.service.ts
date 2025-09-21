@@ -173,6 +173,7 @@ export class MovieBotService implements OnModuleInit {
             userId: ctx.from.id,
             expireAt,
           });
+          console.log('message saved');
         }
       } catch (err) {
         console.error('Movie search error:', err.message);

@@ -5,7 +5,7 @@ import { Document } from 'mongoose';
 export class TempMessage extends Document {
   @Prop({ required: true }) chatId: number;
   @Prop({ required: true }) messageId: number;
-  @Prop({ required: true }) userId: number;
+  @Prop() userId: number;
   @Prop({ required: true }) expireAt: Date;
 }
 
