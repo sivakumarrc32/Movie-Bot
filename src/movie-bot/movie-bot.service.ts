@@ -37,10 +37,15 @@ export class MovieBotService implements OnModuleInit {
     // Start command
     this.bot.start(async (ctx) => {
       try {
-        await ctx.reply(
-          '👋 <b>Welcome to Movie Bot!</b>\n\n🎥 Use /list to see all available movies.\n\n✨ Just type the movie name to get movie instantly!',
-          { parse_mode: 'HTML' },
+        await ctx.replyWithAnimation(
+          { source: '../../tenor.gif' }, // Local file
+          {
+            caption:
+              '👋 <b>Welcome to Movie Bot!</b>\n\n🎥 Use /list to see all available movies.\n\n✨ Just type the movie name to get movie instantly!',
+            parse_mode: 'HTML',
+          },
         );
+
         const user = await this.userModel.findOne({
           telegramId: ctx.from.id,
         });
@@ -97,9 +102,11 @@ export class MovieBotService implements OnModuleInit {
     // Handle movie search
     this.bot.on('text', async (ctx) => {
       if (ctx.message.text.startsWith('/')) return;
+
       const anime = await ctx.replyWithAnimation(
         'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
       );
+
       try {
         const name = ctx.message.text.trim();
         const movie = await this.movieModel.findOne({
@@ -112,21 +119,28 @@ export class MovieBotService implements OnModuleInit {
             parse_mode: 'HTML',
           });
         }
+
+        const sentMessages: number[] = [];
+
+        // Poster
         if (movie.poster?.chatId && movie.poster?.messageId) {
-          await ctx.telegram.forwardMessage(
+          const posterMsg = await ctx.telegram.forwardMessage(
             ctx.chat.id,
             movie.poster.chatId,
             movie.poster.messageId,
           );
+          sentMessages.push(posterMsg.message_id);
         }
 
+        // Files
         for (const file of movie.files) {
           try {
-            await ctx.telegram.forwardMessage(
+            const fileMsg = await ctx.telegram.forwardMessage(
               ctx.chat.id,
               file.chatId,
               file.messageId,
             );
+            sentMessages.push(fileMsg.message_id);
           } catch (err) {
             console.error('File forward error:', err.message);
           }
@@ -134,9 +148,24 @@ export class MovieBotService implements OnModuleInit {
 
         await ctx.deleteMessage(anime.message_id);
 
-        await ctx.reply(
-          `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching!`,
+        const successMsg = await ctx.reply(
+          `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching. \n\n\n <b>⏳ Files Will be Deleted After 15 Mins</b> \n\n\n <h3>Please Forward to Anywhere </h3>`,
           { parse_mode: 'HTML' },
+        );
+        sentMessages.push(successMsg.message_id);
+
+        // 🕒 Auto delete after 15 mins (900,000 ms)
+        setTimeout(
+          async () => {
+            try {
+              for (const id of sentMessages) {
+                await ctx.deleteMessage(id).catch(() => null);
+              }
+            } catch (err) {
+              console.error('Auto delete error:', err.message);
+            }
+          },
+          15 * 60 * 1000,
         );
       } catch (err) {
         console.error('Movie search error:', err.message);
