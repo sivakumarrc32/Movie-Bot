@@ -21,7 +21,6 @@ import { ScheduleModule } from '@nestjs/schedule';
     MovieBotModule,
     CommonModule,
     ScheduleModule.forRoot(),
-
   ],
   controllers: [AppController],
   providers: [AppService],
