@@ -118,10 +118,7 @@ export class UploadBotService implements OnModuleInit {
 
         const sent = await this.safeSend(() =>
           ctx.telegram.sendDocument(this.channelId, file.file_id, {
-            caption: `${file.file_name} (${(
-              (file.file_size ?? 0) /
-              (1024 * 1024)
-            ).toFixed(1)} MB)`,
+            caption: `${file.file_name}`,
           }),
         );
 
@@ -131,6 +128,7 @@ export class UploadBotService implements OnModuleInit {
             size: `${((file.file_size ?? 0) / (1024 * 1024)).toFixed(1)} MB`,
             chatId: String(sent.chat.id),
             messageId: sent.message_id,
+            fileId: file.file_id,
           });
         }
 

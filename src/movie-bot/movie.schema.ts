@@ -27,6 +27,7 @@ export class Movie extends Document {
         size: { type: String },
         chatId: { type: String },
         messageId: { type: Number },
+        fileId: { type: String },
       },
     ],
     default: [],
@@ -36,6 +37,7 @@ export class Movie extends Document {
     size: string;
     chatId: string;
     messageId: number;
+    fileId: string;
   }[];
 }
 
