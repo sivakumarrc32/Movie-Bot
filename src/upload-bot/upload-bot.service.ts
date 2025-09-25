@@ -119,7 +119,7 @@ export class UploadBotService implements OnModuleInit {
         let fileName;
         if (file.file_name?.startsWith('@')) {
           // Find first separator: space, underscore, or hyphen
-          const separators = [' ', '_', '-'];
+          const separators = [' ', '-'];
           let firstSepIndex = -1;
 
           for (const sep of separators) {
