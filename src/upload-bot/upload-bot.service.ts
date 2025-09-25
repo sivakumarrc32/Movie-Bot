@@ -145,7 +145,7 @@ export class UploadBotService implements OnModuleInit {
 
         const sent = await this.safeSend(() =>
           ctx.telegram.sendDocument(this.channelId, file.file_id, {
-            caption: `${fileName} \n\n Join Channel: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movies Tamil</a>`,
+            caption: `${fileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil"`,
           }),
         );
 
