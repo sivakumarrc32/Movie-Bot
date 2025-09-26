@@ -118,18 +118,16 @@ export class UploadBotService implements OnModuleInit {
 
         let fileName;
         if (file.file_name?.startsWith('@')) {
-          // Find first separator: space, underscore, or hyphen
-          const separators = [' ', '-'];
-          let firstSepIndex = -1;
+          // space index
+          const spaceIdx = file.file_name.indexOf(' ');
+          // hyphen index
+          const hyphenIdx = file.file_name.indexOf('-');
 
-          for (const sep of separators) {
-            const idx = file.file_name.indexOf(sep);
-            if (idx !== -1) {
-              if (firstSepIndex === -1 || idx < firstSepIndex) {
-                firstSepIndex = idx;
-              }
-            }
-          }
+          // -1 illa indexes mattum filter panrom
+          const indices = [spaceIdx, hyphenIdx].filter((i) => i !== -1);
+
+          // first separator (minimum index) find panrom
+          const firstSepIndex = indices.length > 0 ? Math.min(...indices) : -1;
 
           if (firstSepIndex !== -1) {
             fileName =
@@ -145,7 +143,7 @@ export class UploadBotService implements OnModuleInit {
 
         const sent = await this.safeSend(() =>
           ctx.telegram.sendDocument(this.channelId, file.file_id, {
-            caption: `${fileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil"`,
+            caption: `${fileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie_bot`,
           }),
         );
 
