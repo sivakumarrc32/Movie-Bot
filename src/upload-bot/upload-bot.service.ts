@@ -31,7 +31,16 @@ export class UploadBotService implements OnModuleInit {
   }
 
   private checkOwner(ctx: any): boolean {
-    if ( ctx.from.id !== this.ownerID2) {
+    if (ctx.from.id !== this.ownerId) {
+      console.log(ctx.from);
+      ctx.reply(
+        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie_bot Here You Can Get the Movies',
+        {
+          parse_mode: 'HTML',
+        },
+      );
+      return false;
+    } else if (ctx.from.id !== this.ownerID2) {
       console.log(ctx.from);
       ctx.reply(
         '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie_bot Here You Can Get the Movies',
