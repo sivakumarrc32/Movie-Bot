@@ -53,8 +53,6 @@ export class MovieBotService implements OnModuleInit {
 
   async start(ctx) {
     try {
-      await ctx.answerCbQuery();
-
       await ctx.replyWithAnimation(
         'CgACAgUAAxkBAAICL2jP7zdwPsDQ8Kocl6nQ1ZXrjI1gAAJYGwACybiAVlKUd15e35cCNgQ', // Local file
         {
