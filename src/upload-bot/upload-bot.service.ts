@@ -17,7 +17,6 @@ export class UploadBotService implements OnModuleInit {
   private sessions: Record<number, SessionData> = {};
   private channelId: string;
   private ownerId: number;
-  private ownerID2: number;
 
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
@@ -27,26 +26,10 @@ export class UploadBotService implements OnModuleInit {
     this.bot = new Telegraf(this.configService.get('UPLOAD_BOT_TOKEN')!);
     this.channelId = '-1002931727367';
     this.ownerId = 992923409;
-    this.ownerID2 = 1984132022;
   }
 
   private checkOwner(ctx: any): boolean {
     if (ctx.from.id !== this.ownerId) {
-      // console.log(ctx.from);
-      ctx.reply(
-        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie_bot Here You Can Get the Movies',
-        {
-          parse_mode: 'HTML',
-        },
-      );
-      return false;
-    }
-    return true;
-  }
-
-  private checkOwner2(ctx: any): boolean {
-    if (ctx.from.id !== this.ownerID2) {
-      console.log(ctx.from);
       ctx.reply(
         '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie_bot Here You Can Get the Movies',
         {
@@ -61,7 +44,7 @@ export class UploadBotService implements OnModuleInit {
   onModuleInit() {
     this.bot.start(async (ctx) => {
       try {
-        if (!this.checkOwner(ctx) || !this.checkOwner2(ctx)) return;
+        if (!this.checkOwner(ctx)) return;
         this.sessions[ctx.chat.id] = { step: 'name', data: {} };
         await ctx.reply('🎬 Send movie name:');
       } catch (err) {
