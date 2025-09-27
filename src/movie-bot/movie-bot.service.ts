@@ -53,11 +53,12 @@ export class MovieBotService implements OnModuleInit {
 
   async start(ctx) {
     try {
+      await ctx.answerCbQuery();
+
       await ctx.replyWithAnimation(
         'CgACAgUAAxkBAAICL2jP7zdwPsDQ8Kocl6nQ1ZXrjI1gAAJYGwACybiAVlKUd15e35cCNgQ', // Local file
         {
-          caption:
-            '👋 <b>Welcome to Movie Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 1. /list -Use this command to see all available movies.\n\n 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!',
+          caption: `👋 Hi ${ctx.from.first_name || 'User'} \n<b>Welcome to Movie Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 1. /list -Use this command to see all available movies.\n\n 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!`,
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [
@@ -208,6 +209,8 @@ export class MovieBotService implements OnModuleInit {
     }
   }
   async help(ctx) {
+    await ctx.answerCbQuery();
+
     try {
       await ctx.reply(
         "<u> <b>Available Commands</b> </u>\n\n👉🏻 1. /list -Use this command to see all available movies.\n\n👉🏻 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!\n\n <i><b>Note :</b> if you know the movie name then type the movie name corretly and get movie files</i> \n\n<i>if you don't know the exact moive name follow the steps below</i>\n\n<u>Follow the Steps to Get the Movie File</u>\n\n<b>Step - 1 :</b> Use /list Command to get the movie list.\n\n<b>Step - 2 :</b> If the Movie Available in the list <b>Press the Movie Name It Will Be Copied</b> \n\n<b>Step - 3 :</b> Paste and Send the Movie You Will Get the Files \n\n<b>Step - 4 :</b> After Getting the File Forward to Your Friends or In Your Saved Message.\n\n <b> Because Files Will Be Deleted After 5 Mins. For Copyrights Issues</b> \n\n\n <i><b>Thanks For Using Our Bot....❤️</b></i>",
@@ -219,6 +222,8 @@ export class MovieBotService implements OnModuleInit {
   }
 
   async about(ctx) {
+    await ctx.answerCbQuery();
+
     try {
       await ctx.editMessageCaption(
         `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_movie_bot">Movie Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
@@ -238,6 +243,8 @@ export class MovieBotService implements OnModuleInit {
 
   async backToStart(ctx) {
     try {
+      await ctx.answerCbQuery();
+
       await ctx.editMessageCaption(
         `👋 <b>Welcome to Movie Bot!</b>\n\n<i>Available Commands</i>\n\n1. /list - Use this command to see all available movies.\n2. /help - To view the commands available in this bot.\n\n✨ Just type the movie name to get movie instantly!`,
         {
