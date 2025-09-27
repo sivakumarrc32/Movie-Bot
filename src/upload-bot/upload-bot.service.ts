@@ -61,8 +61,7 @@ export class UploadBotService implements OnModuleInit {
   onModuleInit() {
     this.bot.start(async (ctx) => {
       try {
-        if (!this.checkOwner(ctx)) return;
-        if (!this.checkOwner2(ctx)) return;
+        if (!this.checkOwner(ctx) || !this.checkOwner2(ctx)) return;
         this.sessions[ctx.chat.id] = { step: 'name', data: {} };
         await ctx.reply('🎬 Send movie name:');
       } catch (err) {
