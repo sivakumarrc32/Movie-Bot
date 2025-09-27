@@ -74,7 +74,7 @@ export class MovieBotService implements OnModuleInit {
     this.bot.command('help', async (ctx) => {
       try {
         await ctx.reply(
-          "<u> <b>Available Commands</b> </u>\n\n 1. /list -Use this command to see all available movies.\n\n 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!\n\n <b>Note :</b> if you know the movie name then type the movie name corretly and get movie files \n if you don't know the exact moive name follow the steps below \n\n <u>Follow the Steps to Get the Movie File</u>\n 1. Use /list Command to get the movie list.\n2.If the Movie Available in the list <b>Press the Movie Name It Will Be Copied</b> \n3. Paste and Send the Movie You Will Get the Files 4. After Getting the File Forward to Your Friends or In Your Saved Message .Because <b>Files Will Be Deleted After 5 Mins. For Copyrights Issues</b> ",
+          "<u> <b>Available Commands</b> </u>\n\n👉🏻 1. /list -Use this command to see all available movies.\n\n👉🏻 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!\n\n <i><b>Note :</b> if you know the movie name then type the movie name corretly and get movie files</i> \n\n<i>if you don't know the exact moive name follow the steps below</i>\n\n<u>Follow the Steps to Get the Movie File</u>\n\n<b>Step - 1 :</b> Use /list Command to get the movie list.\n\n<b>Step - 2 :</b> If the Movie Available in the list <b>Press the Movie Name It Will Be Copied</b> \n\n<b>Step - 3 :</b> Paste and Send the Movie You Will Get the Files \n\n<b>Step - 5 :</b> After Getting the File Forward to Your Friends or In Your Saved Message.Because <b>Files Will Be Deleted After 5 Mins. For Copyrights Issues</b> \n\n\n <i><b>Thanks For Using Our Bot....❤️</b></i>",
           { parse_mode: 'HTML' },
         );
       } catch (err) {
@@ -96,7 +96,7 @@ export class MovieBotService implements OnModuleInit {
           );
         }
         let msg =
-          '<u> <b>Available Movies from @lord_fourth_movie_bot</b> \n\n </u>🎬 <b>Movies List</b>:\n\n ';
+          '<b><u>Available Movies from :</u> @lord_fourth_movie_bot</b> \n\n🎬 <b>Movies List</b>:\n\n ';
         movies.forEach(
           (m, i) => (msg += `<b>${i + 1}. <code>${m.name}</code></b>\n`),
         );
