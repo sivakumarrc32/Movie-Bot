@@ -226,7 +226,7 @@ export class MovieBotService implements OnModuleInit {
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [
-              [{ text: '⬅️ Back', callback_data: 'back_to_start' }],
+              [{ text: '⬅️ Back', callback_data: 'backToStart' }],
             ],
           },
         },
