@@ -43,7 +43,7 @@ export class MovieBotService implements OnModuleInit {
           'CgACAgUAAxkBAAICL2jP7zdwPsDQ8Kocl6nQ1ZXrjI1gAAJYGwACybiAVlKUd15e35cCNgQ', // Local file
           {
             caption:
-              '👋 <b>Welcome to Movie Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 🎥 /list -Use this command to see all available movies.\n\n✨ Just type the movie name to get movie instantly!\n /help - To view the commands available in this bot',
+              '👋 <b>Welcome to Movie Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 1. /list -Use this command to see all available movies.\n\n 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!',
             parse_mode: 'HTML',
           },
         );
@@ -73,15 +73,10 @@ export class MovieBotService implements OnModuleInit {
     // /help command
     this.bot.command('help', async (ctx) => {
       try {
-        const anime = await ctx.replyWithAnimation(
-          'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
-        );
-
-        ctx.reply(
-          "<u> <b>Available Commands</b> </u>\n\n 🎬 /list -Use this command to see all available movies.\n\n✨ Just type the movie name to get movie instantly!\n\n <b>Note :</b> if you know the movie name then type the movie name corretly and get movie files \n if you don't know the exact moive name follow the steps below \n\n <u>Follow the Steps to Get the Movie File</u>\n 1. Use /list Command to get the movie list.\n2.If the Movie Available in the list <b>Press the Movie Name It Will Be Copied</b> \n3. Paste and Send the Movie You Will Get the Files 4. After Getting the File Forward to Your Friends or In Your Saved Message .Because <b>Files Will Be Deleted After 5 Mins. For Copyrights Issues ",
+        await ctx.reply(
+          "<u> <b>Available Commands</b> </u>\n\n 1. /list -Use this command to see all available movies.\n\n 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!\n\n <b>Note :</b> if you know the movie name then type the movie name corretly and get movie files \n if you don't know the exact moive name follow the steps below \n\n <u>Follow the Steps to Get the Movie File</u>\n 1. Use /list Command to get the movie list.\n2.If the Movie Available in the list <b>Press the Movie Name It Will Be Copied</b> \n3. Paste and Send the Movie You Will Get the Files 4. After Getting the File Forward to Your Friends or In Your Saved Message .Because <b>Files Will Be Deleted After 5 Mins. For Copyrights Issues ",
           { parse_mode: 'HTML' },
         );
-        await ctx.deleteMessage(anime.message_id);
       } catch (err) {
         console.error('Help command error:', err.message);
       }
