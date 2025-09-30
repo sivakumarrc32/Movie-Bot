@@ -136,9 +136,26 @@ export class MovieBotService implements OnModuleInit {
 
       if (!movie) {
         await ctx.deleteMessage(anime.message_id);
-        return ctx.reply('❌ Movie not found. <b>Use</b> /list.', {
-          parse_mode: 'HTML',
-        });
+        return ctx.reply(
+          `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Movie is not Available in My Database.</b> \n\n<b>Note :</b>\n\<i>Please Check the Spelling or Movie Available in our bot Using <b> List of Movies</b> </i> \n\n <i>If the Movie is not in the List. Kindly Contact the Admin Using <b>Request Movie</b></i>`,
+          {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: 'Request Movie',
+                    url: 'https://t.me/Feedback_LordFourth_Bot?start=_tgr_W-HlEd45Yzll',
+                  },
+                  {
+                    text: 'List of Movies',
+                    callback_data: 'list',
+                  },
+                ],
+              ],
+            },
+          },
+        );
       }
 
       const sentMessages: { chatId: number; messageId: number }[] = [];

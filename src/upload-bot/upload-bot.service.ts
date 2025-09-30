@@ -136,9 +136,9 @@ export class UploadBotService implements OnModuleInit {
 
           if (firstSepIndex !== -1) {
             fileName =
-              '@LordFourthMovieTamil' + file.file_name.slice(firstSepIndex);
+              '@LordFourthMovieTamil - ' + file.file_name.slice(firstSepIndex);
           } else {
-            fileName = '@LordFourthMovieTamil';
+            fileName = file.file_name;
           }
         } else {
           fileName = file.file_name;
