@@ -30,7 +30,7 @@ export class UploadBotService implements OnModuleInit {
   ) {
     this.bot = new Telegraf(this.configService.get('UPLOAD_BOT_TOKEN')!);
     this.channelId = '-1002931727367';
-    this.ownerId = [992923409, 1984132022];
+    this.ownerId = [992923409, 1984132022, 2092885661];
   }
 
   private checkOwner(ctx: any): boolean {
