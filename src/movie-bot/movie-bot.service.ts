@@ -51,10 +51,12 @@ export class MovieBotService implements OnModuleInit {
     this.bot.action('backToStart', (ctx) => this.backToStart(ctx));
   }
 
+  expireAt = new Date(Date.now() + 2 * 60 * 1000);
+
   async start(ctx) {
     try {
       const userName = ctx.from.username;
-      await ctx.replyWithAnimation(
+      const msg = await ctx.replyWithAnimation(
         'CgACAgUAAxkBAAICL2jP7zdwPsDQ8Kocl6nQ1ZXrjI1gAAJYGwACybiAVlKUd15e35cCNgQ', // Local file
         {
           caption: `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<b>Welcome to Movie Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 1. /list -Use this command to see all available movies.\n\n 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!`,
@@ -77,6 +79,13 @@ export class MovieBotService implements OnModuleInit {
           },
         },
       );
+
+      await this.tempMessageModel.create({
+        telegramId: ctx.from.id,
+        chatId: ctx.chat.id,
+        messageId: msg.message_id,
+        expireAt: this.expireAt,
+      });
 
       const user = await this.userModel.findOne({
         telegramId: ctx.from.id,
@@ -117,6 +126,12 @@ export class MovieBotService implements OnModuleInit {
 
       await ctx.reply(msg, { parse_mode: 'HTML' });
       await ctx.deleteMessage(anime.message_id);
+      await this.tempMessageModel.create({
+        telegramId: ctx.from.id,
+        chatId: ctx.chat.id,
+        messageId: ctx.message.message_id,
+        expireAt: this.expireAt,
+      });
     } catch (err) {
       console.error('/list command error:', err.message);
     }
@@ -226,10 +241,17 @@ export class MovieBotService implements OnModuleInit {
   }
   async help(ctx) {
     try {
-      await ctx.reply(
+      const msg = await ctx.reply(
         "<u> <b>Available Commands</b> </u>\n\n👉🏻 1. /list -Use this command to see all available movies.\n\n👉🏻 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!\n\n <i><b>Note :</b> if you know the movie name then type the movie name corretly and get movie files</i> \n\n<i>if you don't know the exact moive name follow the steps below</i>\n\n<u>Follow the Steps to Get the Movie File</u>\n\n<b>Step - 1 :</b> Use /list Command to get the movie list.\n\n<b>Step - 2 :</b> If the Movie Available in the list <b>Press the Movie Name It Will Be Copied</b> \n\n<b>Step - 3 :</b> Paste and Send the Movie You Will Get the Files \n\n<b>Step - 4 :</b> After Getting the File Forward to Your Friends or In Your Saved Message.\n\n <b> Because Files Will Be Deleted After 5 Mins. For Copyrights Issues</b> \n\n\n <i><b>Thanks For Using Our Bot....❤️</b></i>",
         { parse_mode: 'HTML' },
       );
+
+      await this.tempMessageModel.create({
+        telegramId: ctx.from.id,
+        chatId: ctx.chat.id,
+        messageId: msg.message_id,
+        expireAt: this.expireAt,
+      });
     } catch (err) {
       console.error('Help command error:', err.message);
     }
@@ -239,7 +261,7 @@ export class MovieBotService implements OnModuleInit {
     await ctx.answerCbQuery();
 
     try {
-      await ctx.editMessageCaption(
+      const msg = await ctx.editMessageCaption(
         `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_movie_bot">Movie Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
         {
           parse_mode: 'HTML',
@@ -250,6 +272,13 @@ export class MovieBotService implements OnModuleInit {
           },
         },
       );
+
+      await this.tempMessageModel.create({
+        telegramId: ctx.from.id,
+        chatId: ctx.chat.id,
+        messageId: msg.message_id,
+        expireAt: this.expireAt,
+      })
     } catch (err) {
       console.error('About command error:', err.message);
     }
@@ -259,7 +288,7 @@ export class MovieBotService implements OnModuleInit {
     try {
       await ctx.answerCbQuery();
 
-      await ctx.editMessageCaption(
+      const msg = await ctx.editMessageCaption(
         `👋 <b>Welcome to Movie Bot!</b>\n\n<i>Available Commands</i>\n\n1. /list - Use this command to see all available movies.\n2. /help - To view the commands available in this bot.\n\n✨ Just type the movie name to get movie instantly!`,
         {
           parse_mode: 'HTML',
@@ -281,6 +310,13 @@ export class MovieBotService implements OnModuleInit {
           },
         },
       );
+
+      await this.tempMessageModel.create({
+        telegramId: ctx.from.id,
+        chatId: ctx.chat.id,
+        messageId: msg.message_id,
+        expireAt: this.expireAt,
+      });
     } catch (err) {
       console.error('Back to start error:', err.message);
     }
