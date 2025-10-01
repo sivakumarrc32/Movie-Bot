@@ -42,7 +42,15 @@ export class MovieBotService implements OnModuleInit {
   onModuleInit() {
     this.bot.start((ctx) => this.start(ctx));
     this.bot.command('help', (ctx) => this.help(ctx));
-    this.bot.command('list', (ctx) => this.sendMovieList(ctx));
+    this.bot.command('list', async (ctx) => {
+      await this.sendMovieList(ctx, 1, false); // false => not editing, fresh reply
+    });
+
+    this.bot.action(/^list_page_(\d+)$/, async (ctx) => {
+      const page = parseInt(ctx.match[1]);
+      await this.sendMovieList(ctx, page, true); // true => editing
+    });
+
     this.bot.command('broadcast', (ctx) => this.broadcast(ctx));
     this.bot.on('text', (ctx) => this.sendMovie(ctx));
     this.bot.action('list', (ctx) => this.sendMovieList(ctx));
@@ -104,36 +112,46 @@ export class MovieBotService implements OnModuleInit {
       console.error('Start command error:', err.message);
     }
   }
-  async sendMovieList(ctx) {
-    const anime = await ctx.replyWithAnimation(
-      'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
-    );
-    try {
-      const movies = await this.movieModel.find({}, 'name');
-      if (!movies.length) {
-        await ctx.deleteMessage(anime.message_id);
-        return ctx.reply(
-          '<b>😢 No movies available We will Add Movies Soon.</b>',
-          { parse_mode: 'HTML' },
-        );
-      }
-      let msg =
-        '<b><u>Available Movies from :</u> @lord_fourth_movie_bot</b> \n\n🎬 <b>Movies List</b>:\n\n ';
-      movies.forEach(
-        (m, i) => (msg += `<b>${i + 1}. <code>${m.name}</code></b>\n`),
-      );
-      msg += '\n👉 Type the <b>Movie Name</b> to get Movie.';
+  async sendMovieList(ctx, page = 1, isEdit = false) {
+    const limit = 15;
+    const skip = (page - 1) * limit;
 
-      await ctx.reply(msg, { parse_mode: 'HTML' });
-      await ctx.deleteMessage(anime.message_id);
-      await this.tempMessageModel.create({
-        telegramId: ctx.from.id,
-        chatId: ctx.chat.id,
-        messageId: ctx.message.message_id,
-        expireAt: this.expireAt,
+    const totalMovies = await this.movieModel.countDocuments();
+    const movies = await this.movieModel
+      .find({}, 'name')
+      .skip(skip)
+      .limit(limit);
+
+    if (!movies.length) {
+      return ctx.reply('<b>😢 No movies available.</b>', {
+        parse_mode: 'HTML',
       });
-    } catch (err) {
-      console.error('/list command error:', err.message);
+    }
+
+    let msg = `<b><u>Available Movies :</u></b>\n\n🎬 <b>Page ${page}</b>\n\n`;
+    movies.forEach(
+      (m, i) => (msg += `<b>${skip + i + 1}. <code>${m.name}</code></b>\n`),
+    );
+    msg += `\n👉 Type the <b>Movie Name</b> to get Movie.\n`;
+
+    const buttons: { text: string; callback_data: string }[] = [];
+    if (page > 1)
+      buttons.push({ text: '⬅️ Back', callback_data: `list_page_${page - 1}` });
+    if (skip + limit < totalMovies)
+      buttons.push({ text: 'Next ➡️', callback_data: `list_page_${page + 1}` });
+
+    if (isEdit) {
+      // pagination → edit existing bot message
+      await ctx.editMessageText(msg, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: [buttons] },
+      });
+    } else {
+      // /list → new message
+      await ctx.reply(msg, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: [buttons] },
+      });
     }
   }
   async sendMovie(ctx) {
