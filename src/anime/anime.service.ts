@@ -21,6 +21,7 @@ export class AnimeService implements OnModuleInit {
     @InjectModel(TempMessage.name) private tempMessageModel: Model<TempMessage>,
     private configService: ConfigService,
   ) {
+    console.log('Anime Token', this.configService.get('ANIME_BOT_TOKEN'));
     this.bot = new Telegraf(this.configService.get('ANIME_BOT_TOKEN')!);
     this.ownerId = 992923409;
   }
