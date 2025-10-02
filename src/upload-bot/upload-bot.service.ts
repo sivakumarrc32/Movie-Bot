@@ -49,11 +49,35 @@ export class UploadBotService implements OnModuleInit {
   onModuleInit() {
     this.bot.start(async (ctx) => {
       try {
-        if (!this.checkOwner(ctx)) return;
-        this.sessions[ctx.chat.id] = { step: 'name', data: {} };
-        await ctx.reply('🎬 Send movie name:');
+        await ctx.reply(`Welcome to the upload bot 🎬`);
       } catch (err) {
         console.error('Start error:', err.message);
+      }
+    });
+
+    this.bot.command('movie', async (ctx) => {
+      try {
+        if (!this.checkOwner(ctx)) return;
+        this.sessions[ctx.chat.id] = {
+          step: 'name',
+          data: { type: 'movie' },
+        };
+        await ctx.reply('🎬 Send movie name:');
+      } catch (err) {
+        console.error('Movie command error:', err.message);
+      }
+    });
+
+    this.bot.command('mepisode', async (ctx) => {
+      try {
+        if (!this.checkOwner(ctx)) return;
+        this.sessions[ctx.chat.id] = {
+          step: 'movieEpisode',
+          data: { type: 'mepisode' },
+        };
+        await ctx.reply('🎬 Send movie name:');
+      } catch (err) {
+        console.error('Movie command error:', err.message);
       }
     });
 
@@ -78,6 +102,24 @@ export class UploadBotService implements OnModuleInit {
           session.data.files = [];
           session.step = 'files';
           return ctx.reply(`📂 Now send ${session.data.expectedFiles} files:`);
+        }
+        if (session.step === 'movieEpisode') {
+          session.step = 'episodeNumber';
+          session.data.epiname = ctx.message.text.trim();
+          return ctx.reply('Enter the Episode Numbers :');
+        }
+        if (session.step === 'episodeNumber') {
+          session.step = 'expectedEpiFiles';
+          session.data.epiNumber = ctx.message.text.trim();
+          return ctx.reply('📊 How many files to upload? (Enter number)');
+        }
+        if (session.step === 'expectedEpiFiles') {
+          session.data.expectedEpiFiles = parseInt(ctx.message.text, 10);
+          session.data.files = [];
+          session.step = 'epifiles';
+          return ctx.reply(
+            `📂 Now send ${session.data.expectedEpiFiles} files:`,
+          );
         }
       } catch (err) {
         console.error('Text handler error:', err.message);
@@ -117,66 +159,98 @@ export class UploadBotService implements OnModuleInit {
       try {
         const chatId = ctx.chat.id;
         const session = this.sessions[chatId];
-        if (!session || session.step !== 'files') return;
+        if (
+          !session ||
+          (session.step !== 'files' && session.step !== 'epifiles')
+        )
+          return;
 
         const file = ctx.message.document;
 
         let fileName;
-        if (file.file_name?.startsWith('@')) {
-          // space index
-          const spaceIdx = file.file_name.indexOf(' ');
-          // hyphen index
-          const hyphenIdx = file.file_name.indexOf('-');
+        if (session.data.type === 'mepisode' || session.data.type === 'movie') {
+          if (file.file_name?.startsWith('@')) {
+            const spaceIdx = file.file_name.indexOf(' ');
+            const hyphenIdx = file.file_name.indexOf('-');
+            const indices = [spaceIdx, hyphenIdx].filter((i) => i !== -1);
+            const firstSepIndex =
+              indices.length > 0 ? Math.min(...indices) : -1;
 
-          // -1 illa indexes mattum filter panrom
-          const indices = [spaceIdx, hyphenIdx].filter((i) => i !== -1);
-
-          // first separator (minimum index) find panrom
-          const firstSepIndex = indices.length > 0 ? Math.min(...indices) : -1;
-
-          if (firstSepIndex !== -1) {
-            fileName =
-              '@LordFourthMovieTamil - ' + file.file_name.slice(firstSepIndex);
+            if (firstSepIndex !== -1) {
+              fileName =
+                '@LordFourthMovieTamil - ' +
+                file.file_name.slice(firstSepIndex);
+            } else {
+              fileName = file.file_name;
+            }
           } else {
             fileName = file.file_name;
           }
-        } else {
-          fileName = file.file_name;
+
+          console.log(fileName);
         }
 
-        console.log(fileName);
+        if (session.data.type === 'mepisode' || session.data.type === 'movie') {
+          const sent = await this.safeSend(() =>
+            ctx.telegram.sendDocument(this.channelId, file.file_id, {
+              caption: `${fileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie_bot`,
+            }),
+          );
 
-        const sent = await this.safeSend(() =>
-          ctx.telegram.sendDocument(this.channelId, file.file_id, {
-            caption: `${fileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie_bot`,
-          }),
-        );
-
-        if (sent) {
-          session.data.files.push({
-            fileName: fileName,
-            size: `${((file.file_size ?? 0) / (1024 * 1024)).toFixed(1)} MB`,
-            chatId: String(sent.chat.id),
-            messageId: sent.message_id,
-            fileId: file.file_id,
-          });
+          if (sent) {
+            session.data.files.push({
+              fileName: fileName,
+              size: `${((file.file_size ?? 0) / (1024 * 1024)).toFixed(1)} MB`,
+              chatId: String(sent.chat.id),
+              messageId: sent.message_id,
+              fileId: file.file_id,
+            });
+          }
         }
 
-        if (session.data.files.length >= session.data.expectedFiles) {
-          try {
-            const movie = new this.movieModel(session.data);
-            await movie.save();
-            await this.movieBotService.sendBroadcast(
-              `✨ <i><b>${movie.name}</b></i> Movie Added! ✨\n\n` +
-                `👉 Type the <b>Movie Name</b> and get the file instantly.\n\n` +
-                `🍿 Enjoy Watching!\n\n` +
-                `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n` +
-                `📢 Join Channel: <a href="https://t.me/Cinemxtic_Univerz">CINEMATIC UNIVERSE!</a> \n\n`,
-            );
-            await ctx.reply('✅ Movie uploaded successfully!');
-          } catch (dbErr) {
-            console.error('DB save error:', dbErr.message);
-            await ctx.reply('❌ Error saving movie to DB.');
+        const expected =
+          session.data.type === 'movie'
+            ? session.data.expectedFiles
+            : session.data.expectedEpiFiles;
+
+        if (session.data.files.length >= expected) {
+          if (session.data.type === 'movie') {
+            try {
+              const movie = new this.movieModel(session.data);
+              await movie.save();
+              await this.movieBotService.sendBroadcast(
+                `✨ <i><b>${movie.name}</b></i> Movie Added! ✨\n\n` +
+                  `👉 Type the <b>Movie Name</b> and get the file instantly.\n\n` +
+                  `🍿 Enjoy Watching!\n\n` +
+                  `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n` +
+                  `📢 Join Channel: <a href="https://t.me/Cinemxtic_Univerz">CINEMATIC UNIVERSE!</a> \n\n`,
+              );
+              await ctx.reply('✅ Movie uploaded successfully!');
+            } catch (dbErr) {
+              console.error('DB save error:', dbErr.message);
+              await ctx.reply('❌ Error saving movie to DB.');
+            }
+          } else if (session.data.type === 'mepisode') {
+            try {
+              const movieEpisode = await this.movieModel.findOne({
+                name: session.data.epiname,
+              });
+              if (movieEpisode) {
+                movieEpisode.files.push(...session.data.files);
+                await movieEpisode.save();
+                await this.movieBotService.sendBroadcast(
+                  `✨ <i><b>${movieEpisode.name} ${session.data.epiNumber}</b></i> Movie Episode or Season Added! ✨\n\n` +
+                    `👉 Type the <b>Movie Name</b> and get the file instantly.\n\n` +
+                    `🍿 Enjoy Watching!\n\n` +
+                    `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n` +
+                    `📢 Join Channel: <a href="https://t.me/Cinemxtic_Univerz">CINEMATIC UNIVERSE!</a> \n\n`,
+                );
+                await ctx.reply('✅ Movie episode uploaded successfully!');
+              }
+            } catch (err) {
+              console.error('DB save error:', err.message);
+              await ctx.reply('❌ Error saving movie to DB.');
+            }
           }
           delete this.sessions[chatId];
         }
