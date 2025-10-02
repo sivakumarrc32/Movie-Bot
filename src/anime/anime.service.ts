@@ -101,7 +101,7 @@ export class AnimeService implements OnModuleInit {
       await this.tempMessageModel.create({
         telegramId: ctx.from.id,
         messageId: message.message_id,
-        chatId: message.chat.id,
+        chatId: ctx.chat.id,
         expireAt: this.expireAt,
       });
 
@@ -195,9 +195,35 @@ export class AnimeService implements OnModuleInit {
 
       if (!anime) {
         await ctx.deleteMessage(ani.message_id);
-        return ctx.reply('❌ Anime not found. <b>Use</b> /list.', {
-          parse_mode: 'HTML',
+        const msg = await ctx.reply(
+          `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Anime is not Available in My Database.</b> \n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Anime Available in our bot Using <b> List of Animes</b> </i> \n\n <i>If the Anime is not in the List. Kindly Contact the Admin Using <b>Request Anime</b></i>`,
+          {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: 'Request Anime',
+                    url: 'https://t.me/Feedback_LordFourth_Bot?start=_tgr_W-HlEd45Yzll',
+                  },
+                  {
+                    text: 'List of Animes',
+                    callback_data: 'list',
+                  },
+                ],
+              ],
+            },
+          },
+        );
+
+        await this.tempMessageModel.create({
+          telegramId: ctx.from.id,
+          chatId: ctx.chat.id,
+          messageId: msg.message_id,
+          expireAt: this.expireAt,
         });
+
+        return;
       }
 
       const sentMessages: { chatId: string; messageId: number }[] = [];
@@ -242,7 +268,7 @@ export class AnimeService implements OnModuleInit {
 
       for (const msg of sentMessages) {
         await this.tempMessageModel.create({
-          chatId: msg.chatId,
+          chatId: ctx.chatId,
           messageId: msg.messageId,
           userId: ctx.from.id,
           expireAt,
@@ -268,10 +294,17 @@ export class AnimeService implements OnModuleInit {
   }
   async help(ctx) {
     try {
-      await ctx.reply(
+      const msg = await ctx.reply(
         "<u> <b>Available Commands</b> </u>\n\n👉🏻 1. /list -Use this command to see all available animes.\n\n👉🏻 2. /help - To view the commands available in this bot \n\n✨ Just type the anime name to get anime instantly!\n\n <i><b>Note :</b> if you know the anime name then type the anime name corretly and get anime files</i> \n\n<i>if you don't know the exact moive name follow the steps below</i>\n\n<u>Follow the Steps to Get the Anime File</u>\n\n<b>Step - 1 :</b> Use /list Command to get the anime list.\n\n<b>Step - 2 :</b> If the anime Available in the list <b>Press the anime Name It Will Be Copied</b> \n\n<b>Step - 3 :</b> Paste and Send the anime You Will Get the Files \n\n<b>Step - 4 :</b> After Getting the File Forward to Your Friends or In Your Saved Message.\n\n <b> Because Files Will Be Deleted After 5 Mins. For Copyrights Issues</b> \n\n\n <i><b>Thanks For Using Our Bot....❤️</b></i>",
         { parse_mode: 'HTML' },
       );
+
+      await this.tempMessageModel.create({
+        telegramId: ctx.from.id,
+        chatId: ctx.chat.id,
+        messageId: msg.message_id,
+        expireAt: this.expireAt,
+      });
     } catch (err) {
       console.error('Help command error:', err.message);
     }
@@ -281,7 +314,7 @@ export class AnimeService implements OnModuleInit {
     await ctx.answerCbQuery();
 
     try {
-      await ctx.editMessageCaption(
+      const msg = await ctx.editMessageCaption(
         `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_anime_bot">Anime Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
         {
           parse_mode: 'HTML',
@@ -292,6 +325,13 @@ export class AnimeService implements OnModuleInit {
           },
         },
       );
+
+      await this.tempMessageModel.create({
+        telegramId: ctx.from.id,
+        chatId: ctx.chat.id,
+        messageId: msg.message_id,
+        expireAt: this.expireAt,
+      })
     } catch (err) {
       console.error('About command error:', err.message);
     }
