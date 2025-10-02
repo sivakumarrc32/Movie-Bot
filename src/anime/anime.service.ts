@@ -6,30 +6,29 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Telegraf } from 'telegraf';
-import { Movie } from './movie.schema';
 import { ConfigService } from '@nestjs/config';
-import { User } from './user.schema';
-import { TempMessage } from './temp.schema';
-
+import { Anime } from './anime.schema';
+import { AnimeUser } from './anime.user.schema';
+import { TempMessage } from 'src/movie-bot/temp.schema';
 @Injectable()
-export class MovieBotService implements OnModuleInit {
+export class AnimeService implements OnModuleInit {
   public bot: Telegraf;
   public ownerId: number;
 
   constructor(
-    @InjectModel(Movie.name) private movieModel: Model<Movie>,
-    @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Anime.name) private animeModel: Model<Anime>,
+    @InjectModel(AnimeUser.name) private userModel: Model<AnimeUser>,
     @InjectModel(TempMessage.name) private tempMessageModel: Model<TempMessage>,
     private configService: ConfigService,
   ) {
-    this.bot = new Telegraf(this.configService.get('MOVIE_BOT_TOKEN')!);
+    this.bot = new Telegraf(this.configService.get('ANIME_BOT_TOKEN')!);
     this.ownerId = 992923409;
   }
 
   private checkOwner(ctx: any): boolean {
     if (ctx.from.id !== this.ownerId) {
       ctx.reply(
-        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie_bot Here You Can Get the Movies',
+        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_anime_bot Here You Can Get the Animes',
         {
           parse_mode: 'HTML',
         },
@@ -43,40 +42,50 @@ export class MovieBotService implements OnModuleInit {
     this.bot.start((ctx) => this.start(ctx));
     this.bot.command('help', (ctx) => this.help(ctx));
     this.bot.command('list', async (ctx) => {
-      await this.sendMovieList(ctx, 1, false); // false => not editing, fresh reply
+      await this.sendAnimeList(ctx, 1, false); // false => not editing, fresh reply
     });
 
     this.bot.action(/^list_page_(\d+)$/, async (ctx) => {
       const page = parseInt(ctx.match[1]);
-      await this.sendMovieList(ctx, page, true); // true => editing
+      await this.sendAnimeList(ctx, page, true); // true => editing
     });
-
     this.bot.command('broadcast', (ctx) => this.broadcast(ctx));
-    this.bot.on('text', (ctx) => this.sendMovie(ctx));
-    this.bot.action('list', (ctx) => this.sendMovieList(ctx, 1, false));
+    this.bot.on('text', (ctx) => this.sendAnime(ctx));
+    this.bot.action('list', (ctx) => this.sendAnimeList(ctx, 1, false));
     this.bot.action('help', (ctx) => this.help(ctx));
     this.bot.action('about', (ctx) => this.about(ctx));
     this.bot.action('backToStart', (ctx) => this.backToStart(ctx));
+
+    this.bot.launch();
   }
 
-  expireAt = new Date(Date.now() + 2 * 60 * 1000);
+  expireAt = new Date(Date.now() + 5 * 60 * 1000);
 
   async start(ctx) {
     try {
       const userName = ctx.from.username;
-      const msg = await ctx.replyWithAnimation(
-        'CgACAgUAAxkBAAICL2jP7zdwPsDQ8Kocl6nQ1ZXrjI1gAAJYGwACybiAVlKUd15e35cCNgQ', // Local file
+      const message = await ctx.reply(
+        `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<b>Welcome to Anime Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 1. /list -Use this command to see all available Animes.\n\n 2. /help - Steps for How to Get the Anime  \n\n✨ Just type the Anime name to get Anime instantly!`,
         {
-          caption: `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<b>Welcome to Movie Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 1. /list -Use this command to see all available movies.\n\n 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!`,
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [
               [
-                { text: '📃 List of Movies', callback_data: 'list' },
+                {
+                  text: 'Anime Bot',
+                  url: 'https://t.me/lord_fourth_anime_bot',
+                },
+                {
+                  text: 'Movie Bot',
+                  url: 'https://t.me/lord_fourth_movie_bot',
+                },
+              ],
+              [
+                { text: '📃 List of Anime', callback_data: 'list' },
                 { text: 'ℹ️ Help', callback_data: 'help' },
               ],
               [
-                { text: '👨‍💻 About Bot', callback_data: 'about' },
+                { text: '👨‍💻 About', callback_data: 'about' },
                 {
                   text: '⚙️ Support',
                   url: 'https://t.me/Feedback_LordFourth_Bot?start=_tgr_W-HlEd45Yzll',
@@ -90,8 +99,8 @@ export class MovieBotService implements OnModuleInit {
 
       await this.tempMessageModel.create({
         telegramId: ctx.from.id,
-        chatId: ctx.chat.id,
-        messageId: msg.message_id,
+        messageId: message.message_id,
+        chatId: message.chat.id,
         expireAt: this.expireAt,
       });
 
@@ -112,13 +121,13 @@ export class MovieBotService implements OnModuleInit {
       console.error('Start command error:', err.message);
     }
   }
-  async sendMovieList(ctx, page = 1, isEdit = false) {
+  async sendAnimeList(ctx, page = 1, isEdit = false) {
     try {
       const limit = 15;
       const skip = (page - 1) * limit;
 
-      const totalMovies = await this.movieModel.countDocuments();
-      const movies = await this.movieModel
+      const totalMovies = await this.animeModel.countDocuments();
+      const movies = await this.animeModel
         .find({}, 'name')
         .skip(skip)
         .limit(limit);
@@ -161,61 +170,38 @@ export class MovieBotService implements OnModuleInit {
         });
       }
     } catch (err) {
-      console.error('sendMovieList command error:', err.message);
+      console.error('List command error:', err.message);
+      ctx.reply('⚠️ Error occurred while processing the command.');
     }
   }
-  async sendMovie(ctx) {
+  async sendAnime(ctx) {
     if (ctx.message.text.startsWith('/')) return;
 
-    const anime = await ctx.replyWithAnimation(
-      'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
-    );
+    // const anime = await ctx.replyWithAnimation(
+    //   'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
+    // );
 
     try {
       const name = ctx.message.text.trim();
-      const movie = await this.movieModel.findOne({
+      const anime = await this.animeModel.findOne({
         name: { $regex: name, $options: 'i' },
       });
 
-      if (!movie) {
-        await ctx.deleteMessage(anime.message_id);
-        const msg = await ctx.reply(
-          `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Movie is not Available in My Database.</b> \n\n<b>Note :</b>\n\<i>Please Check the Spelling or Movie Available in our bot Using <b> List of Movies</b> </i> \n\n <i>If the Movie is not in the List. Kindly Contact the Admin Using <b>Request Movie</b></i>`,
-          {
-            parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: 'Request Movie',
-                    url: 'https://t.me/Feedback_LordFourth_Bot?start=_tgr_W-HlEd45Yzll',
-                  },
-                  {
-                    text: 'List of Movies',
-                    callback_data: 'list',
-                  },
-                ],
-              ],
-            },
-          },
-        );
-        await this.tempMessageModel.create({
-          telegramId: ctx.from.id,
-          chatId: ctx.chat.id,
-          messageId: msg.message_id,
-          expireAt: this.expireAt,
+      if (!anime) {
+        // await ctx.deleteMessage(anime.message_id);
+        return ctx.reply('❌ Anime not found. <b>Use</b> /list.', {
+          parse_mode: 'HTML',
         });
-        return;
       }
 
-      const sentMessages: { chatId: number; messageId: number }[] = [];
+      const sentMessages: { chatId: string; messageId: number }[] = [];
 
       // Poster
-      if (movie.poster?.chatId && movie.poster?.messageId) {
+      if (anime.poster?.chatId && anime.poster?.messageId) {
         const posterMsg = await ctx.telegram.forwardMessage(
           ctx.chat.id,
-          movie.poster.chatId,
-          movie.poster.messageId,
+          anime.poster.chatId,
+          anime.poster.messageId,
         );
         sentMessages.push({
           chatId: ctx.chat.id,
@@ -224,7 +210,7 @@ export class MovieBotService implements OnModuleInit {
       }
 
       // Files
-      for (const file of movie.files) {
+      for (const file of anime.files) {
         const fileMsg = await ctx.telegram.forwardMessage(
           ctx.chat.id,
           file.chatId,
@@ -236,10 +222,10 @@ export class MovieBotService implements OnModuleInit {
         });
       }
 
-      await ctx.deleteMessage(anime.message_id);
+      //   await ctx.deleteMessage(anime.message_id);
 
       const successMsg = await ctx.reply(
-        `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching. \n\n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
+        `✅ <b>Anime "${anime.name}" sent successfully!</b>\n\n 🙇🏻<b>"Episode orders are not proper, please check Sorry for the inconvenience "</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
         { parse_mode: 'HTML' },
       );
       sentMessages.push({
@@ -258,7 +244,7 @@ export class MovieBotService implements OnModuleInit {
         console.log('message saved');
       }
     } catch (err) {
-      console.error('Movie search error:', err.message);
+      console.error('Anime search error:', err.message);
     }
   }
   async broadcast(ctx) {
@@ -276,17 +262,10 @@ export class MovieBotService implements OnModuleInit {
   }
   async help(ctx) {
     try {
-      const msg = await ctx.reply(
-        "<u> <b>Available Commands</b> </u>\n\n👉🏻 1. /list -Use this command to see all available movies.\n\n👉🏻 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!\n\n <i><b>Note :</b> if you know the movie name then type the movie name corretly and get movie files</i> \n\n<i>if you don't know the exact moive name follow the steps below</i>\n\n<u>Follow the Steps to Get the Movie File</u>\n\n<b>Step - 1 :</b> Use /list Command to get the movie list.\n\n<b>Step - 2 :</b> If the Movie Available in the list <b>Press the Movie Name It Will Be Copied</b> \n\n<b>Step - 3 :</b> Paste and Send the Movie You Will Get the Files \n\n<b>Step - 4 :</b> After Getting the File Forward to Your Friends or In Your Saved Message.\n\n <b> Because Files Will Be Deleted After 5 Mins. For Copyrights Issues</b> \n\n\n <i><b>Thanks For Using Our Bot....❤️</b></i>",
+      await ctx.reply(
+        "<u> <b>Available Commands</b> </u>\n\n👉🏻 1. /list -Use this command to see all available animes.\n\n👉🏻 2. /help - To view the commands available in this bot \n\n✨ Just type the anime name to get anime instantly!\n\n <i><b>Note :</b> if you know the anime name then type the anime name corretly and get anime files</i> \n\n<i>if you don't know the exact moive name follow the steps below</i>\n\n<u>Follow the Steps to Get the Anime File</u>\n\n<b>Step - 1 :</b> Use /list Command to get the anime list.\n\n<b>Step - 2 :</b> If the anime Available in the list <b>Press the anime Name It Will Be Copied</b> \n\n<b>Step - 3 :</b> Paste and Send the anime You Will Get the Files \n\n<b>Step - 4 :</b> After Getting the File Forward to Your Friends or In Your Saved Message.\n\n <b> Because Files Will Be Deleted After 5 Mins. For Copyrights Issues</b> \n\n\n <i><b>Thanks For Using Our Bot....❤️</b></i>",
         { parse_mode: 'HTML' },
       );
-
-      await this.tempMessageModel.create({
-        telegramId: ctx.from.id,
-        chatId: ctx.chat.id,
-        messageId: msg.message_id,
-        expireAt: this.expireAt,
-      });
     } catch (err) {
       console.error('Help command error:', err.message);
     }
@@ -296,8 +275,8 @@ export class MovieBotService implements OnModuleInit {
     await ctx.answerCbQuery();
 
     try {
-      const msg = await ctx.editMessageCaption(
-        `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_movie_bot">Movie Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
+      await ctx.editMessageCaption(
+        `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_anime_bot">Anime Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
         {
           parse_mode: 'HTML',
           reply_markup: {
@@ -307,13 +286,6 @@ export class MovieBotService implements OnModuleInit {
           },
         },
       );
-
-      await this.tempMessageModel.create({
-        telegramId: ctx.from.id,
-        chatId: ctx.chat.id,
-        messageId: msg.message_id,
-        expireAt: this.expireAt,
-      });
     } catch (err) {
       console.error('About command error:', err.message);
     }
@@ -323,14 +295,14 @@ export class MovieBotService implements OnModuleInit {
     try {
       await ctx.answerCbQuery();
 
-      const msg = await ctx.editMessageCaption(
-        `👋 <b>Welcome to Movie Bot!</b>\n\n<i>Available Commands</i>\n\n1. /list - Use this command to see all available movies.\n2. /help - To view the commands available in this bot.\n\n✨ Just type the movie name to get movie instantly!`,
+      await ctx.editMessageCaption(
+        `👋 <b>Welcome to Anime Bot!</b>\n\n<i>Available Commands</i>\n\n1. /list - Use this command to see all available Animes.\n2. /help - To view the commands available in this bot.\n\n✨ Just type the Anime name to get Anime instantly!`,
         {
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [
               [
-                { text: '📃 List of Movies', callback_data: 'list' },
+                { text: '📃 List of Animes', callback_data: 'list' },
                 { text: 'ℹ️ Help', callback_data: 'help' },
               ],
               [
@@ -345,13 +317,6 @@ export class MovieBotService implements OnModuleInit {
           },
         },
       );
-
-      await this.tempMessageModel.create({
-        telegramId: ctx.from.id,
-        chatId: ctx.chat.id,
-        messageId: msg.message_id,
-        expireAt: this.expireAt,
-      });
     } catch (err) {
       console.error('Back to start error:', err.message);
     }

@@ -10,6 +10,7 @@ import { Telegraf } from 'telegraf';
 import { Movie } from '../movie-bot/movie.schema';
 import { ConfigService } from '@nestjs/config';
 import { MovieBotService } from 'src/movie-bot/movie-bot.service';
+import { Anime } from 'src/anime/anime.schema';
 
 interface SessionData {
   step: string;
@@ -21,15 +22,18 @@ export class UploadBotService implements OnModuleInit {
   public bot: Telegraf;
   private sessions: Record<number, SessionData> = {};
   private channelId: string;
+  private animeChannelId: string;
   private ownerId: number[];
 
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
+    @InjectModel(Anime.name) private animeModel: Model<Anime>,
     private configService: ConfigService,
     private movieBotService: MovieBotService,
   ) {
     this.bot = new Telegraf(this.configService.get('UPLOAD_BOT_TOKEN')!);
     this.channelId = '-1002931727367';
+    this.animeChannelId = '-1003158050881';
     this.ownerId = [992923409, 1984132022, 2092885661];
   }
 
@@ -81,6 +85,32 @@ export class UploadBotService implements OnModuleInit {
       }
     });
 
+    this.bot.command('anime', async (ctx) => {
+      try {
+        if (!this.checkOwner(ctx)) return;
+        this.sessions[ctx.chat.id] = {
+          step: 'name',
+          data: { type: 'anime' },
+        };
+        await ctx.reply('🎬 Send anime name:');
+      } catch (err) {
+        console.error('Movie command error:', err.message);
+      }
+    });
+
+    this.bot.command('aepisode', async (ctx) => {
+      try {
+        if (!this.checkOwner(ctx)) return;
+        this.sessions[ctx.chat.id] = {
+          step: 'movieEpisode',
+          data: { type: 'aepisode' },
+        };
+        await ctx.reply('🎬 Send anime name:');
+      } catch (err) {
+        console.error('Anime command error:', err.message);
+      }
+    });
+
     this.bot.on('text', async (ctx) => {
       try {
         const chatId = ctx.chat.id;
@@ -90,12 +120,16 @@ export class UploadBotService implements OnModuleInit {
         if (session.step === 'name') {
           session.data.name = ctx.message.text.trim();
           session.step = 'caption';
-          return ctx.reply('📝 Send movie caption:');
+          return session.data.type === 'anime'
+            ? ctx.reply('📝 Send anime caption:')
+            : ctx.reply('📝 Send movie caption:');
         }
         if (session.step === 'caption') {
           session.data.caption = ctx.message.text.trim();
           session.step = 'poster';
-          return ctx.reply('🖼️ Send movie poster:');
+          return session.data.type === 'anime'
+            ? ctx.reply('🖼️ Send anime poster:')
+            : ctx.reply('🖼️ Send movie poster:');
         }
         if (session.step === 'expectedFiles') {
           session.data.expectedFiles = parseInt(ctx.message.text, 10);
@@ -135,8 +169,11 @@ export class UploadBotService implements OnModuleInit {
         const photo = ctx.message.photo.pop()!;
         const caption = session.data.caption;
 
+        const targetChannel =
+          session.data.type === 'anime' ? this.animeChannelId : this.channelId;
+
         const sent = await this.safeSend(() =>
-          ctx.telegram.sendPhoto(this.channelId, photo.file_id, {
+          ctx.telegram.sendPhoto(targetChannel, photo.file_id, {
             caption: `🎬 ${session.data.name}\n\n${caption}`,
           }),
         );
@@ -155,7 +192,7 @@ export class UploadBotService implements OnModuleInit {
       }
     });
 
-    this.bot.on('document', async (ctx) => {
+    this.bot.on(['document', 'video'], async (ctx) => {
       try {
         const chatId = ctx.chat.id;
         const session = this.sessions[chatId];
@@ -164,10 +201,16 @@ export class UploadBotService implements OnModuleInit {
           (session.step !== 'files' && session.step !== 'epifiles')
         )
           return;
-
-        const file = ctx.message.document;
+        const msg = ctx.message;
+        let file;
+        if ('document' in msg) {
+          file = msg.document;
+        } else if ('video' in msg) {
+          file = msg.video;
+        }
 
         let fileName;
+        let AnimefileName;
         if (session.data.type === 'mepisode' || session.data.type === 'movie') {
           if (file.file_name?.startsWith('@')) {
             const spaceIdx = file.file_name.indexOf(' ');
@@ -188,11 +231,42 @@ export class UploadBotService implements OnModuleInit {
           }
 
           console.log(fileName);
+        } else if (
+          session.data.type === 'anime' ||
+          session.data.type === 'aepisode'
+        ) {
+          if (file.file_name?.startsWith('@')) {
+            const spaceIdx = file.file_name.indexOf(' ');
+            const hyphenIdx = file.file_name.indexOf('-');
+            const indices = [spaceIdx, hyphenIdx].filter((i) => i !== -1);
+            const firstSepIndex =
+              indices.length > 0 ? Math.min(...indices) : -1;
+
+            if (firstSepIndex !== -1) {
+              AnimefileName =
+                '@LordFourthMovieTamil - ' +
+                file.file_name.slice(firstSepIndex);
+            } else {
+              AnimefileName = file.file_name;
+            }
+          } else {
+            AnimefileName = file.file_name;
+          }
+
+          console.log(AnimefileName);
         }
 
-        if (session.data.type === 'mepisode' || session.data.type === 'movie') {
+        const targetChannel =
+          session.data.type === 'anime' ? this.animeChannelId : this.channelId;
+
+        const epiTargetChannel =
+          session.data.type === 'aepisode'
+            ? this.animeChannelId
+            : this.channelId;
+
+        if (session.data.type === 'movie') {
           const sent = await this.safeSend(() =>
-            ctx.telegram.sendDocument(this.channelId, file.file_id, {
+            ctx.telegram.sendDocument(targetChannel, file.file_id, {
               caption: `${fileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie_bot`,
             }),
           );
@@ -200,6 +274,54 @@ export class UploadBotService implements OnModuleInit {
           if (sent) {
             session.data.files.push({
               fileName: fileName,
+              size: `${((file.file_size ?? 0) / (1024 * 1024)).toFixed(1)} MB`,
+              chatId: String(sent.chat.id),
+              messageId: sent.message_id,
+              fileId: file.file_id,
+            });
+          }
+        } else if (session.data.type === 'anime') {
+          const sent = await this.safeSend(() =>
+            ctx.telegram.sendDocument(targetChannel, file.file_id, {
+              caption: `${AnimefileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie_bot`,
+            }),
+          );
+
+          if (sent) {
+            session.data.files.push({
+              fileName: AnimefileName,
+              size: `${((file.file_size ?? 0) / (1024 * 1024)).toFixed(1)} MB`,
+              chatId: String(sent.chat.id),
+              messageId: sent.message_id,
+              fileId: file.file_id,
+            });
+          }
+        } else if (session.data.type === 'mepisode') {
+          const sent = await this.safeSend(() =>
+            ctx.telegram.sendDocument(epiTargetChannel, file.file_id, {
+              caption: `${fileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie_bot`,
+            }),
+          );
+
+          if (sent) {
+            session.data.files.push({
+              fileName: fileName,
+              size: `${((file.file_size ?? 0) / (1024 * 1024)).toFixed(1)} MB`,
+              chatId: String(sent.chat.id),
+              messageId: sent.message_id,
+              fileId: file.file_id,
+            });
+          }
+        } else if (session.data.type === 'aepisode') {
+          const sent = await this.safeSend(() =>
+            ctx.telegram.sendDocument(epiTargetChannel, file.file_id, {
+              caption: `${AnimefileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie_bot`,
+            }),
+          );
+
+          if (sent) {
+            session.data.files.push({
+              fileName: AnimefileName,
               size: `${((file.file_size ?? 0) / (1024 * 1024)).toFixed(1)} MB`,
               chatId: String(sent.chat.id),
               messageId: sent.message_id,
@@ -251,7 +373,31 @@ export class UploadBotService implements OnModuleInit {
               console.error('DB save error:', err.message);
               await ctx.reply('❌ Error saving movie to DB.');
             }
+          } else if (session.data.type === 'anime') {
+            try {
+              const anime = new this.animeModel(session.data);
+              await anime.save();
+              await ctx.reply('✅ Anime uploaded successfully!');
+            } catch (dbErr) {
+              console.error('DB save error:', dbErr.message);
+              await ctx.reply('❌ Error saving movie to DB.');
+            }
+          } else if (session.data.type === 'aepisode') {
+            try {
+              const animeEpisode = await this.animeModel.findOne({
+                name: session.data.epiname,
+              });
+              if (animeEpisode) {
+                animeEpisode.files.push(...session.data.files);
+                await animeEpisode.save();
+                await ctx.reply('✅ Anime episode uploaded successfully!');
+              }
+            } catch (err) {
+              console.error('DB save error:', err.message);
+              await ctx.reply('❌ Error saving movie to DB.');
+            }
           }
+
           delete this.sessions[chatId];
         }
       } catch (err) {
