@@ -21,7 +21,6 @@ export class AnimeService implements OnModuleInit {
     @InjectModel(TempMessage.name) private tempMessageModel: Model<TempMessage>,
     private configService: ConfigService,
   ) {
-    console.log('Anime Token', this.configService.get('ANIME_BOT_TOKEN'));
     this.bot = new Telegraf(this.configService.get('ANIME_BOT_TOKEN')!);
     this.ownerId = 992923409;
   }
@@ -64,10 +63,12 @@ export class AnimeService implements OnModuleInit {
   async start(ctx) {
     try {
       const userName = ctx.from.username;
-      const message = await ctx.reply(
-        `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<b>Welcome to Anime Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 1. /list -Use this command to see all available Animes.\n\n 2. /help - Steps for How to Get the Anime  \n\n✨ Just type the Anime name to get Anime instantly!`,
+      const message = await ctx.replyWithAnimation(
+        'CgACAgUAAxkBAAIBqWje1uUB4Kfp1iH2SFv8PMY12VkXAAJ-GQACSsz4Vly_XR76PxZ-NgQ',
         {
+          caption: `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<b>Welcome to Anime Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 1. /list -Use this command to see all available Animes.\n\n 2. /help - Steps for How to Get the Anime  \n\n✨ Just type the Anime name to get Anime instantly!`,
           parse_mode: 'HTML',
+          disable_web_page_preview: true,
           reply_markup: {
             inline_keyboard: [
               [
@@ -122,6 +123,9 @@ export class AnimeService implements OnModuleInit {
     }
   }
   async sendAnimeList(ctx, page = 1, isEdit = false) {
+    const ani = await ctx.replyWithAnimation(
+      'CAACAgUAAxkBAAIBpmje0EtKLDDHmnxLwL1Y8l7HtN0LAAJ9GQACSsz4Vv2odmJpcRPVNgQ',
+    );
     try {
       const limit = 15;
       const skip = (page - 1) * limit;
@@ -143,6 +147,8 @@ export class AnimeService implements OnModuleInit {
         (m, i) => (msg += `<b>${skip + i + 1}. <code>${m.name}</code></b>\n`),
       );
       msg += `\n👉 Type the <b>Movie Name</b> to get Movie.\n`;
+
+      await ctx.deleteMessage(ani.message_id);
 
       const buttons: { text: string; callback_data: string }[] = [];
       if (page > 1)
@@ -177,9 +183,9 @@ export class AnimeService implements OnModuleInit {
   async sendAnime(ctx) {
     if (ctx.message.text.startsWith('/')) return;
 
-    // const anime = await ctx.replyWithAnimation(
-    //   'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
-    // );
+    const ani = await ctx.replyWithAnimation(
+      'CAACAgUAAxkBAAIBpmje0EtKLDDHmnxLwL1Y8l7HtN0LAAJ9GQACSsz4Vv2odmJpcRPVNgQ',
+    );
 
     try {
       const name = ctx.message.text.trim();
@@ -188,7 +194,7 @@ export class AnimeService implements OnModuleInit {
       });
 
       if (!anime) {
-        // await ctx.deleteMessage(anime.message_id);
+        await ctx.deleteMessage(ani.message_id);
         return ctx.reply('❌ Anime not found. <b>Use</b> /list.', {
           parse_mode: 'HTML',
         });
@@ -222,7 +228,7 @@ export class AnimeService implements OnModuleInit {
         });
       }
 
-      //   await ctx.deleteMessage(anime.message_id);
+      await ctx.deleteMessage(ani.message_id);
 
       const successMsg = await ctx.reply(
         `✅ <b>Anime "${anime.name}" sent successfully!</b>\n\n 🙇🏻<b>"Episode orders are not proper, please check Sorry for the inconvenience "</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,

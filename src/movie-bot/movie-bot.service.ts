@@ -69,8 +69,19 @@ export class MovieBotService implements OnModuleInit {
         {
           caption: `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<b>Welcome to Movie Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 1. /list -Use this command to see all available movies.\n\n 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!`,
           parse_mode: 'HTML',
+          disable_web_page_preview: true,
           reply_markup: {
             inline_keyboard: [
+              [
+                {
+                  text: 'Movie Bot',
+                  url: 'https://t.me/lord_fourth_movie_bot',
+                },
+                {
+                  text: 'Anime Bot',
+                  url: 'https://t.me/lord_fourth_anime_bot',
+                },
+              ],
               [
                 { text: '📃 List of Movies', callback_data: 'list' },
                 { text: 'ℹ️ Help', callback_data: 'help' },
