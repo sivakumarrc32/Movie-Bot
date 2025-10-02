@@ -56,6 +56,7 @@ export class AnimeService implements OnModuleInit {
     this.bot.action('help', (ctx) => this.help(ctx));
     this.bot.action('about', (ctx) => this.about(ctx));
     this.bot.action('backToStart', (ctx) => this.backToStart(ctx));
+    this.bot.on('message', (ctx) => console.log(ctx));
   }
 
   expireAt = new Date(Date.now() + 5 * 60 * 1000);
