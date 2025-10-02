@@ -8,6 +8,7 @@ import { AppController } from './app.controller';
 import { CommonModule } from './common/common.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CommonController } from './common/common.controller';
+import { AnimeModule } from './anime/anime.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CommonController } from './common/common.controller';
     MovieBotModule,
     CommonModule,
     ScheduleModule.forRoot(),
+    AnimeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
