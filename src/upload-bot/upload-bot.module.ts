@@ -7,6 +7,8 @@ import { MovieBotService } from 'src/movie-bot/movie-bot.service';
 import { User, UserSchema } from 'src/movie-bot/user.schema';
 import { TempMessage, TempMessageSchema } from 'src/movie-bot/temp.schema';
 import { Anime, AnimeSchema } from 'src/anime/anime.schema';
+import { AnimeService } from 'src/anime/anime.service';
+import { AnimeUser, AnimeUserSchema } from 'src/anime/anime.user.schema';
 
 @Module({
   imports: [
@@ -15,9 +17,10 @@ import { Anime, AnimeSchema } from 'src/anime/anime.schema';
       { name: User.name, schema: UserSchema },
       { name: TempMessage.name, schema: TempMessageSchema },
       { name: Anime.name, schema: AnimeSchema },
+      { name: AnimeUser.name, schema: AnimeUserSchema },
     ]),
   ],
-  providers: [UploadBotService, MovieBotService],
+  providers: [UploadBotService, MovieBotService, AnimeService],
   controllers: [UploadBotController],
 })
 export class UploadBotModule {}

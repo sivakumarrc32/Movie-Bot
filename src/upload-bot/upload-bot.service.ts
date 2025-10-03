@@ -11,6 +11,7 @@ import { Movie } from '../movie-bot/movie.schema';
 import { ConfigService } from '@nestjs/config';
 import { MovieBotService } from 'src/movie-bot/movie-bot.service';
 import { Anime } from 'src/anime/anime.schema';
+import { AnimeService } from 'src/anime/anime.service';
 
 interface SessionData {
   step: string;
@@ -30,6 +31,7 @@ export class UploadBotService implements OnModuleInit {
     @InjectModel(Anime.name) private animeModel: Model<Anime>,
     private configService: ConfigService,
     private movieBotService: MovieBotService,
+    private animeBotService: AnimeService,
   ) {
     this.bot = new Telegraf(this.configService.get('UPLOAD_BOT_TOKEN')!);
     this.channelId = '-1002931727367';
@@ -378,6 +380,12 @@ export class UploadBotService implements OnModuleInit {
               const anime = new this.animeModel(session.data);
               await anime.save();
               await ctx.reply('✅ Anime uploaded successfully!');
+              await this.animeBotService.sendBroadcast(
+                `✨ <i><b>${anime.name}</b></i> Anime Added! ✨\n\n` +
+                  `👉 Type the <b>Anime Name</b> and get the file instantly.\n\n` +
+                  `🍿 Enjoy Watching!\n\n` +
+                  `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n`,
+              );
             } catch (dbErr) {
               console.error('DB save error:', dbErr.message);
               await ctx.reply('❌ Error saving movie to DB.');
@@ -391,6 +399,12 @@ export class UploadBotService implements OnModuleInit {
                 animeEpisode.files.push(...session.data.files);
                 await animeEpisode.save();
                 await ctx.reply('✅ Anime episode uploaded successfully!');
+                await this.animeBotService.sendBroadcast(
+                  `✨ <i><b>${animeEpisode.name} ${session.data.epiNumber}</b></i> Anime Episode or Season Added! ✨\n\n` +
+                    `👉 Type the <b>Anime Name</b> and get the file instantly.\n\n` +
+                    `🍿 Enjoy Watching!\n\n` +
+                    `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n`,
+                );
               }
             } catch (err) {
               console.error('DB save error:', err.message);
