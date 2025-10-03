@@ -226,7 +226,7 @@ export class AnimeService implements OnModuleInit {
         return;
       }
 
-      const sentMessages: { chatId: string; messageId: number }[] = [];
+      const sentMessages: { chatId: number; messageId: number }[] = [];
 
       // Poster
       if (anime.poster?.chatId && anime.poster?.messageId) {
