@@ -5,6 +5,7 @@ import { Movie, MovieSchema } from './movie.schema';
 import { MovieBotController } from './movie-bot.controller';
 import { User, UserSchema } from './user.schema';
 import { TempMessage, TempMessageSchema } from './temp.schema';
+import { Anime, AnimeSchema } from 'src/anime/anime.schema';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { TempMessage, TempMessageSchema } from './temp.schema';
       { name: Movie.name, schema: MovieSchema },
       { name: User.name, schema: UserSchema },
       { name: TempMessage.name, schema: TempMessageSchema },
+      { name: Anime.name, schema: AnimeSchema },
     ]),
   ],
   providers: [MovieBotService],

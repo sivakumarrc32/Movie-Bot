@@ -9,6 +9,8 @@ import { MovieBotService } from 'src/movie-bot/movie-bot.service';
 // import { ScheduleModule } from '@nestjs/schedule';
 import { CommonController } from './common.controller';
 import { AnimeService } from 'src/anime/anime.service';
+import { Anime, AnimeSchema } from 'src/anime/anime.schema';
+import { AnimeUser, AnimeUserSchema } from 'src/anime/anime.user.schema';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { AnimeService } from 'src/anime/anime.service';
       { name: Movie.name, schema: MovieSchema },
       { name: User.name, schema: UserSchema },
       { name: TempMessage.name, schema: TempMessageSchema },
+      { name: Anime.name, schema: AnimeSchema },
+      { name: AnimeUser.name, schema: AnimeUserSchema },
     ]),
   ],
   providers: [CommonService, ConfigService, MovieBotService, AnimeService],
