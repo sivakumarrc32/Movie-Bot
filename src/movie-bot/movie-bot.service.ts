@@ -211,7 +211,6 @@ export class MovieBotService implements OnModuleInit {
           },
         );
         await this.tempMessageModel.create({
-          telegramId: ctx.from.id,
           chatId: ctx.chat.id,
           messageId: msg.message_id,
           expireAt: this.expireAt,

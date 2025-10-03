@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Cron, CronExpression } from '@nestjs/schedule';
+// import { Cron, CronExpression } from '@nestjs/schedule';
 import { Model } from 'mongoose';
 import { AnimeService } from 'src/anime/anime.service';
 import { MovieBotService } from 'src/movie-bot/movie-bot.service';

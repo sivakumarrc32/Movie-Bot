@@ -58,8 +58,6 @@ export class AnimeService implements OnModuleInit {
     // this.bot.on('message', (ctx) => console.log(ctx.message));
   }
 
-  expireAt = new Date(Date.now() + 5 * 60 * 1000);
-
   async start(ctx) {
     try {
       const userName = ctx.from.username;
@@ -100,8 +98,8 @@ export class AnimeService implements OnModuleInit {
 
       await this.tempMessageModel.create({
         messageId: message.message_id,
-        chatId: ctx.chat.id,
-        expireAt: this.expireAt,
+        chatId: message.chat.id,
+        expireAt: new Date(Date.now() + 5 * 60 * 1000),
         userId: ctx.from.id,
       });
 
@@ -219,7 +217,7 @@ export class AnimeService implements OnModuleInit {
         await this.tempMessageModel.create({
           chatId: ctx.chat.id,
           messageId: msg.message_id,
-          expireAt: this.expireAt,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
           userId: ctx.from.id,
         });
 
@@ -268,7 +266,7 @@ export class AnimeService implements OnModuleInit {
 
       for (const msg of sentMessages) {
         await this.tempMessageModel.create({
-          chatId: ctx.chatId,
+          chatId: ctx.chat.id,
           messageId: msg.messageId,
           userId: ctx.from.id,
           expireAt,
@@ -303,7 +301,7 @@ export class AnimeService implements OnModuleInit {
         userId: ctx.from.id,
         chatId: ctx.chat.id,
         messageId: msg.message_id,
-        expireAt: this.expireAt,
+        expireAt: new Date(Date.now() + 5 * 60 * 1000),
       });
     } catch (err) {
       console.error('Help command error:', err.message);
@@ -330,7 +328,7 @@ export class AnimeService implements OnModuleInit {
         userId: ctx.from.id,
         chatId: ctx.chat.id,
         messageId: msg.message_id,
-        expireAt: this.expireAt,
+        expireAt: new Date(Date.now() + 5 * 60 * 1000),
       });
     } catch (err) {
       console.error('About command error:', err.message);
