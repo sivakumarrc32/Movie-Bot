@@ -191,7 +191,7 @@ export class MovieBotService implements OnModuleInit {
       if (!movie) {
         await ctx.deleteMessage(anime.message_id);
         const msg = await ctx.reply(
-          `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Movie is not Available in My Database.</b> \n\n<b>Note :</b>\n\<i>Please Check the Spelling or Movie Available in our bot Using <b> List of Movies</b> </i> \n\n <i>If the Movie is not in the List. Kindly Contact the Admin Using <b>Request Movie</b></i>`,
+          `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Movie is not Available in My Database.</b>\n\n<b><u>Examples for Typing</u></b>\n 1.<Web Series Name> S01 or <Web Series Name> S02 \n2. <Movie Name> \n3. <Web Series Name>\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Movie Available in our bot Using <b> List of Movies</b> </i> \n\n <i>If the Movie is not in the List. Kindly Contact the Admin Using <b>Request Movie</b></i>`,
           {
             parse_mode: 'HTML',
             reply_markup: {
