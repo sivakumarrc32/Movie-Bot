@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Model } from 'mongoose';
+import { AnimeService } from 'src/anime/anime.service';
 import { MovieBotService } from 'src/movie-bot/movie-bot.service';
 import { TempMessage } from 'src/movie-bot/temp.schema';
 // import { Telegraf } from 'telegraf';
@@ -14,6 +15,7 @@ export class CommonService {
     @InjectModel(TempMessage.name) private tempMessageModel: Model<TempMessage>,
     private configService: ConfigService,
     private movieBotService: MovieBotService,
+    private animeBotService: AnimeService,
   ) {}
   // @Cron(CronExpression.EVERY_MINUTE)
   async handleExpiredMessages() {
@@ -25,6 +27,9 @@ export class CommonService {
     for (const msg of messages) {
       try {
         await this.movieBotService.bot.telegram
+          .deleteMessage(msg.chatId, msg.messageId)
+          .catch(() => null);
+        await this.animeBotService.bot.telegram
           .deleteMessage(msg.chatId, msg.messageId)
           .catch(() => null);
         console.log('message deleted');

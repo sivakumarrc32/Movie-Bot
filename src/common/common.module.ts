@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { MovieBotService } from 'src/movie-bot/movie-bot.service';
 // import { ScheduleModule } from '@nestjs/schedule';
 import { CommonController } from './common.controller';
+import { AnimeService } from 'src/anime/anime.service';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { CommonController } from './common.controller';
       { name: TempMessage.name, schema: TempMessageSchema },
     ]),
   ],
-  providers: [CommonService, ConfigService, MovieBotService],
+  providers: [CommonService, ConfigService, MovieBotService, AnimeService],
   controllers: [CommonController],
 })
 export class CommonModule {}

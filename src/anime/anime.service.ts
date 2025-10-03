@@ -99,10 +99,10 @@ export class AnimeService implements OnModuleInit {
       );
 
       await this.tempMessageModel.create({
-        telegramId: ctx.from.id,
         messageId: message.message_id,
         chatId: ctx.chat.id,
         expireAt: this.expireAt,
+        userId: ctx.from.id,
       });
 
       const user = await this.userModel.findOne({
@@ -217,10 +217,10 @@ export class AnimeService implements OnModuleInit {
         );
 
         await this.tempMessageModel.create({
-          telegramId: ctx.from.id,
           chatId: ctx.chat.id,
           messageId: msg.message_id,
           expireAt: this.expireAt,
+          userId: ctx.from.id,
         });
 
         return;
@@ -300,7 +300,7 @@ export class AnimeService implements OnModuleInit {
       );
 
       await this.tempMessageModel.create({
-        telegramId: ctx.from.id,
+        userId: ctx.from.id,
         chatId: ctx.chat.id,
         messageId: msg.message_id,
         expireAt: this.expireAt,
@@ -327,11 +327,11 @@ export class AnimeService implements OnModuleInit {
       );
 
       await this.tempMessageModel.create({
-        telegramId: ctx.from.id,
+        userId: ctx.from.id,
         chatId: ctx.chat.id,
         messageId: msg.message_id,
         expireAt: this.expireAt,
-      })
+      });
     } catch (err) {
       console.error('About command error:', err.message);
     }
