@@ -379,13 +379,13 @@ export class UploadBotService implements OnModuleInit {
             try {
               const anime = new this.animeModel(session.data);
               await anime.save();
-              await ctx.reply('✅ Anime uploaded successfully!');
               await this.animeBotService.sendBroadcast(
                 `✨ <i><b>${anime.name}</b></i> Anime Added! ✨\n\n` +
                   `👉 Type the <b>Anime Name</b> and get the file instantly.\n\n` +
                   `🍿 Enjoy Watching!\n\n` +
                   `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n`,
               );
+              await ctx.reply('✅ Anime uploaded successfully!');
             } catch (dbErr) {
               console.error('DB save error:', dbErr.message);
               await ctx.reply('❌ Error saving movie to DB.');
@@ -398,13 +398,13 @@ export class UploadBotService implements OnModuleInit {
               if (animeEpisode) {
                 animeEpisode.files.push(...session.data.files);
                 await animeEpisode.save();
-                await ctx.reply('✅ Anime episode uploaded successfully!');
                 await this.animeBotService.sendBroadcast(
                   `✨ <i><b>${animeEpisode.name} ${session.data.epiNumber}</b></i> Anime Episode or Season Added! ✨\n\n` +
                     `👉 Type the <b>Anime Name</b> and get the file instantly.\n\n` +
                     `🍿 Enjoy Watching!\n\n` +
                     `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n`,
                 );
+                await ctx.reply('✅ Anime episode uploaded successfully!');
               }
             } catch (err) {
               console.error('DB save error:', err.message);
