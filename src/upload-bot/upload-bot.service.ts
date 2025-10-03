@@ -332,8 +332,10 @@ export class UploadBotService implements OnModuleInit {
           }
         }
 
+        const type = session.data.type === 'movie' ? 'movie' : 'anime';
+
         const expected =
-          session.data.type === 'movie'
+          session.data.type === type
             ? session.data.expectedFiles
             : session.data.expectedEpiFiles;
 
