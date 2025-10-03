@@ -188,13 +188,13 @@ export class AnimeService implements OnModuleInit {
     try {
       const name = ctx.message.text.trim();
       const anime = await this.animeModel.findOne({
-        name: { $regex: name, $options: 'i' },
+        name: { $regex: name },
       });
 
       if (!anime) {
         await ctx.deleteMessage(ani.message_id);
         const msg = await ctx.reply(
-          `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Anime is not Available in My Database.</b>\n\n <b><u>Examples for Typing</u></b>\n 1.<Anime Name> S01 or <Anime Name> S02 \n2. <Anime Name>\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Anime Available in our bot Using <b> List of Animes</b> </i> \n\n <i>If the Anime is not in the List. Kindly Contact the Admin Using <b>Request Anime</b></i>`,
+          `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Anime is not Available in My Database.</b>\n\n<b>Anime Name Must be in Correct Format</b>\n\n <b><u>Examples for Typing</u></b>\n 1.(Anime Name) S01 or (Anime Name) S02 \n2. (Anime Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Anime Available in our bot Using <b> List of Animes</b> </i> \n\n <i>If the Anime is not in the List. Kindly Contact the Admin Using <b>Request Anime</b></i>`,
           {
             parse_mode: 'HTML',
             reply_markup: {
