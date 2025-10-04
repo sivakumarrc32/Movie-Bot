@@ -484,7 +484,7 @@ export class MovieBotService implements OnModuleInit {
           });
         }
         const successMsg = await ctx.reply(
-          `✅ <b>Anime "${movie.name}" sent successfully!</b>\n\n 🙇🏻<b>"Episode orders are not proper, please check Sorry for the inconvenience "</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
+          `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
           { parse_mode: 'HTML' },
         );
 
@@ -521,7 +521,7 @@ export class MovieBotService implements OnModuleInit {
           expireAt: new Date(Date.now() + 5 * 60 * 1000),
         });
         const successMsg = await ctx.reply(
-          `✅ <b>Anime "${movie.name}" sent successfully!</b>\n\n 🙇🏻<b>"Episode orders are not proper, please check Sorry for the inconvenience "</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
+          `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
           { parse_mode: 'HTML' },
         );
 
