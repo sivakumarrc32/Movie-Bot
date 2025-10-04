@@ -505,7 +505,7 @@ export class AnimeService implements OnModuleInit {
         const file = anime.files[idx];
         if (!file) return ctx.reply('❌ Episode not found.');
 
-        await ctx.telegram.forwardMessage(
+        const msg = await ctx.telegram.forwardMessage(
           ctx.chat.id,
           file.chatId,
           file.messageId,
@@ -513,10 +513,11 @@ export class AnimeService implements OnModuleInit {
 
         await this.tempMessageModel.create({
           userId: ctx.from.id,
-          messageId: file.messageId,
-          chatId: file.chatId,
+          messageId: msg.message_id,
+          chatId: ctx.chat.id,
           expireAt: new Date(Date.now() + 5 * 60 * 1000),
         });
+
         const successMsg = await ctx.reply(
           `✅ <b>Anime "${anime.name}" sent successfully!</b>\n\n 🙇🏻<b>"Episode orders are not proper, please check Sorry for the inconvenience "</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
           { parse_mode: 'HTML' },

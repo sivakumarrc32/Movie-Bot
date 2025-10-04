@@ -15,7 +15,7 @@ import { Movie, MovieSchema } from 'src/movie-bot/movie.schema';
       { name: AnimeUser.name, schema: AnimeUserSchema },
       { name: TempMessage.name, schema: TempMessageSchema },
       { name: User.name, schema: UserSchema },
-      { name: Movie.name, schema: MovieSchema}
+      { name: Movie.name, schema: MovieSchema },
     ]),
   ],
   controllers: [AnimeController],
