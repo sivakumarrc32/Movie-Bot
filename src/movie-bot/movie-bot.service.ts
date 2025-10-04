@@ -39,6 +39,50 @@ export class MovieBotService implements OnModuleInit {
     return true;
   }
 
+  private channels = ['@LordFourthMovieTamil', '@LordFourthAnimeTamil']; // 🔴 unga rendu channel usernames
+
+  private async checkSubscription(ctx: any): Promise<boolean> {
+    try {
+      for (const channel of this.channels) {
+        const chatMember = await ctx.telegram.getChatMember(
+          channel,
+          ctx.from.id,
+        );
+
+        if (chatMember.status === 'left') {
+          await ctx.replyWithAnimation(
+            'CgACAgUAAxkBAAICL2jP7zdwPsDQ8Kocl6nQ1ZXrjI1gAAJYGwACybiAVlKUd15e35cCNgQ',
+            {
+              caption:
+                '<b>🚫 To use this bot, you must join all our channels first.</b>',
+
+              parse_mode: 'HTML',
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: '📢 Join Channel 1',
+                      url: 'https://t.me/LordFourthMovieTamil',
+                    },
+                    {
+                      text: '📢 Join Channel 2',
+                      url: 'https://t.me/LordFourthAnimeTamil',
+                    },
+                  ],
+                  [{ text: 'Try Again', callback_data: 'check_join' }],
+                ],
+              },
+            },
+          );
+          return false;
+        }
+      }
+      return true;
+    } catch (err) {
+      console.error('checkSubscription error:', err.message);
+      return false;
+    }
+  }
   onModuleInit() {
     this.bot.start((ctx) => this.start(ctx));
     this.bot.command('help', (ctx) => this.help(ctx));
@@ -57,12 +101,25 @@ export class MovieBotService implements OnModuleInit {
     this.bot.action('help', (ctx) => this.help(ctx));
     this.bot.action('about', (ctx) => this.about(ctx));
     this.bot.action('backToStart', (ctx) => this.backToStart(ctx));
+    this.bot.action('check_join', async (ctx) => {
+      const isJoined = await this.checkSubscription(ctx);
+      if (isJoined) {
+        await ctx.answerCbQuery('✅ You have joined the channels!');
+        await this.start(ctx);
+      } else {
+        await ctx.answerCbQuery('❌ Please join all channels first!', {
+          show_alert: true,
+        });
+      }
+    });
   }
 
   expireAt = new Date(Date.now() + 2 * 60 * 1000);
 
   async start(ctx) {
     try {
+      const isJoined = await this.checkSubscription(ctx);
+      if (!isJoined) return;
       const userName = ctx.from.username;
       const msg = await ctx.replyWithAnimation(
         'CgACAgUAAxkBAAICL2jP7zdwPsDQ8Kocl6nQ1ZXrjI1gAAJYGwACybiAVlKUd15e35cCNgQ', // Local file
