@@ -185,7 +185,7 @@ export class MovieBotService implements OnModuleInit {
     try {
       const name = ctx.message.text.trim();
       const movie = await this.movieModel.findOne({
-        name: { $regex: name },
+        name: { $regex: name, $options: 'i' },
       });
 
       if (!movie) {

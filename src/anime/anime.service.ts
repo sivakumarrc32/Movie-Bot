@@ -188,7 +188,7 @@ export class AnimeService implements OnModuleInit {
     try {
       const name = ctx.message.text.trim();
       const anime = await this.animeModel.findOne({
-        name: { $regex: name },
+        name: { $regex: name, $options: 'i' },
       });
 
       if (!anime) {
