@@ -14,6 +14,7 @@ import { TempMessage } from 'src/movie-bot/temp.schema';
 export class AnimeService implements OnModuleInit {
   public bot: Telegraf;
   public ownerId: number;
+  private PAGE_SIZE = 10;
 
   constructor(
     @InjectModel(Anime.name) private animeModel: Model<Anime>,
@@ -110,6 +111,9 @@ export class AnimeService implements OnModuleInit {
         });
       }
     });
+    this.bot.action(/^(all|file|page)_/, (ctx) =>
+      this.handleEpisodeSelection(ctx),
+    );
     // this.bot.on('message', (ctx) => console.log(ctx.message));
   }
 
@@ -296,29 +300,21 @@ export class AnimeService implements OnModuleInit {
         });
       }
 
-      // Files
-      for (const file of anime.files) {
-        const fileMsg = await ctx.telegram.forwardMessage(
-          ctx.chat.id,
-          file.chatId,
-          file.messageId,
-        );
-        sentMessages.push({
-          chatId: ctx.chat.id,
-          messageId: fileMsg.message_id,
-        });
-      }
+      // // Files
+      // for (const file of anime.files) {
+      //   const fileMsg = await ctx.telegram.forwardMessage(
+      //     ctx.chat.id,
+      //     file.chatId,
+      //     file.messageId,
+      //   );
+      //   sentMessages.push({
+      //     chatId: ctx.chat.id,
+      //     messageId: fileMsg.message_id,
+      //   });
+      // }
+      await this.sendEpisodePage(ctx, anime, 0);
 
       await ctx.deleteMessage(ani.message_id);
-
-      const successMsg = await ctx.reply(
-        `✅ <b>Anime "${anime.name}" sent successfully!</b>\n\n 🙇🏻<b>"Episode orders are not proper, please check Sorry for the inconvenience "</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
-        { parse_mode: 'HTML' },
-      );
-      sentMessages.push({
-        chatId: ctx.chat.id,
-        messageId: successMsg.message_id,
-      });
       const expireAt = new Date(Date.now() + 5 * 60 * 1000);
 
       for (const msg of sentMessages) {
@@ -442,6 +438,172 @@ export class AnimeService implements OnModuleInit {
       console.log(`✅ Broadcast sent to ${users.length} users`);
     } catch (err) {
       console.error('Broadcast error:', err.message);
+    }
+  }
+
+  async handleEpisodeSelection(ctx) {
+    try {
+      await ctx.answerCbQuery(); // hide "loading" in Telegram
+
+      const data = ctx.callbackQuery.data as string;
+
+      if (data.startsWith('page_')) {
+        console.log('page_', data);
+        const parts = data.split('_');
+        const animeId = parts[1];
+        const page = parseInt(parts[2], 10);
+
+        const anime = await this.animeModel.findById(animeId);
+        if (!anime) return ctx.reply('❌ Anime not found.');
+
+        // show the requested page
+        return this.sendEpisodePage(ctx, anime, page);
+      }
+
+      if (data.startsWith('all_')) {
+        const animeId = data.split('_')[1];
+        const anime = await this.animeModel.findById(animeId);
+
+        if (!anime) return ctx.reply('❌ Anime not found.');
+
+        for (const file of anime.files) {
+          await ctx.telegram.forwardMessage(
+            ctx.chat.id,
+            file.chatId,
+            file.messageId,
+          );
+
+          await this.tempMessageModel.create({
+            userId: ctx.from.id,
+            messageId: file.messageId,
+            chatId: file.chatId,
+            expireAt: new Date(Date.now() + 5 * 60 * 1000),
+          });
+        }
+        const successMsg = await ctx.reply(
+          `✅ <b>Anime "${anime.name}" sent successfully!</b>\n\n 🙇🏻<b>"Episode orders are not proper, please check Sorry for the inconvenience "</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
+          { parse_mode: 'HTML' },
+        );
+
+        await this.tempMessageModel.create({
+          userId: ctx.from.id,
+          messageId: successMsg.message_id,
+          chatId: ctx.chat.id,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
+        });
+        return;
+      }
+
+      if (data.startsWith('file_')) {
+        const parts = data.split('_');
+        const animeId = parts[1];
+        const idx = parseInt(parts[2], 10);
+
+        const anime = await this.animeModel.findById(animeId);
+        if (!anime) return ctx.reply('❌ Anime not found.');
+
+        const file = anime.files[idx];
+        if (!file) return ctx.reply('❌ Episode not found.');
+
+        await ctx.telegram.forwardMessage(
+          ctx.chat.id,
+          file.chatId,
+          file.messageId,
+        );
+
+        await this.tempMessageModel.create({
+          userId: ctx.from.id,
+          messageId: file.messageId,
+          chatId: file.chatId,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
+        });
+        const successMsg = await ctx.reply(
+          `✅ <b>Anime "${anime.name}" sent successfully!</b>\n\n 🙇🏻<b>"Episode orders are not proper, please check Sorry for the inconvenience "</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
+          { parse_mode: 'HTML' },
+        );
+
+        await this.tempMessageModel.create({
+          userId: ctx.from.id,
+          messageId: successMsg.message_id,
+          chatId: ctx.chat.id,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
+        });
+        return;
+      }
+    } catch (err) {
+      console.error('Error sending episode:', err.message);
+    }
+  }
+
+  private async sendEpisodePage(ctx, anime, page: number) {
+    const start = page * this.PAGE_SIZE;
+    const end = start + this.PAGE_SIZE;
+
+    const files = anime.files.slice(start, end);
+
+    const buttons: any[] = [];
+
+    // Send All button only in first page
+    if (page === 0) {
+      buttons.push([
+        { text: '📥 Send All', callback_data: `all_${anime._id}` },
+      ]);
+    }
+
+    files.forEach((file, idx) => {
+      const fileName = file.fileName
+        .replace(/^.*?-\s*/, '')
+        .replace(/\.mkv$/i, '');
+      buttons.push([
+        {
+          text: `${fileName}`,
+          callback_data: `file_${anime._id}_${start + idx}`,
+        },
+      ]);
+    });
+
+    // Pagination buttons
+    const navButtons: any[] = [];
+    if (page > 0) {
+      navButtons.push({
+        text: '⬅️ Prev',
+        callback_data: `page_${anime._id}_${page - 1}`,
+      });
+    }
+    if (end < anime.files.length) {
+      console.log('end < anime.files.length', end, anime.files.length);
+      navButtons.push({
+        text: 'Next ➡️',
+        callback_data: `page_${anime._id}_${page + 1}`,
+      });
+    }
+    if (navButtons.length) buttons.push(navButtons);
+
+    if (ctx.updateType === 'callback_query') {
+      // edit the inline keyboard when callback
+      await ctx.editMessageText(
+        `<b>${anime.name} Episodes (Page ${page + 1})</b>`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: buttons },
+        },
+      );
+    } else {
+      // normal reply when user types anime name
+      const msg = await ctx.reply(
+        `<b>${anime.name} Episodes (Page ${page + 1})</b>`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: buttons },
+        },
+      );
+
+      await this.tempMessageModel.create({
+        userId: ctx.from.id,
+        messageId: msg.message_id,
+        chatId: ctx.chat.id,
+        expireAt: new Date(Date.now() + 5 * 60 * 1000),
+      });
     }
   }
 }
