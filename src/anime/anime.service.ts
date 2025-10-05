@@ -476,7 +476,7 @@ export class AnimeService implements OnModuleInit {
           await this.tempMessageModel.create({
             userId: ctx.from.id,
             messageId: file.messageId,
-            chatId: file.chatId,
+            chatId: ctx.chat.id,
             expireAt: new Date(Date.now() + 5 * 60 * 1000),
           });
         }
@@ -553,7 +553,7 @@ export class AnimeService implements OnModuleInit {
 
     files.forEach((file, idx) => {
       const fileName = file.fileName
-        .replace(/^.*?-\s*/, '')
+        .replace(/^.*?-\s*@[^_]+_+\s*/, '') // remove all bot/channel prefixes
         .replace(/\.mkv$/i, '');
       buttons.push([
         {
