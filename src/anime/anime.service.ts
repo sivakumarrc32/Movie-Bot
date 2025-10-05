@@ -556,9 +556,10 @@ export class AnimeService implements OnModuleInit {
       const fileName = file.fileName
         .replace(/^.*?-\s*@[^_]+_+\s*/, '') // remove all bot/channel prefixes
         .replace(/\.mkv$/i, '');
+      const fileSize = file.fileSize;
       buttons.push([
         {
-          text: `${fileName}`,
+          text: `[${fileSize}]-${fileName}`,
           callback_data: `file_${anime._id}_${start + idx}`,
         },
       ]);
