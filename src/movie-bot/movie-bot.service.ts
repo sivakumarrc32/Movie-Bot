@@ -429,7 +429,8 @@ export class MovieBotService implements OnModuleInit {
         try {
           await this.bot.telegram.sendMessage(user.telegramId, message, {
             parse_mode: 'HTML',
-          });
+            disable_web_page_preview: true,
+          } as any);
         } catch (err) {
           console.error(
             `❌ Could not send to ${user.telegramId}:`,
