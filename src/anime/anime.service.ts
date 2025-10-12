@@ -106,14 +106,15 @@ export class AnimeService implements OnModuleInit {
         await ctx.answerCbQuery('✅ You have joined the channels!');
         await this.start(ctx);
       } else {
-        await ctx.answerCbQuery('❌ Please join all channels first!', {
-          show_alert: true,
-        });
+        await ctx.answerCbQuery('❌ Please join all channels first!');
       }
     });
     this.bot.action(/^(all|file|page)_/, (ctx) =>
       this.handleEpisodeSelection(ctx),
     );
+    this.bot.action('noop', async (ctx) => {
+      await ctx.answerCbQuery('❌ This Not a Button');
+    });
     // this.bot.on('message', (ctx) => console.log(ctx.message));
   }
 
@@ -190,6 +191,7 @@ export class AnimeService implements OnModuleInit {
       const skip = (page - 1) * limit;
 
       const totalMovies = await this.animeModel.countDocuments();
+      const totalPages = Math.ceil(totalMovies / limit);
       const movies = await this.animeModel
         .find({}, 'name')
         .skip(skip)
@@ -215,6 +217,10 @@ export class AnimeService implements OnModuleInit {
           text: '⬅️ Back',
           callback_data: `list_page_${page - 1}`,
         });
+      buttons.push({
+        text: `Pages ${page}/${totalPages}`,
+        callback_data: 'noop',
+      });
       if (skip + limit < totalMovies)
         buttons.push({
           text: 'Next ➡️',
@@ -542,6 +548,7 @@ export class AnimeService implements OnModuleInit {
     const end = start + this.PAGE_SIZE;
 
     const files = anime.files.slice(start, end);
+    const totalPages = Math.ceil(anime.files.length / this.PAGE_SIZE);
 
     const buttons: any[] = [];
 
@@ -573,6 +580,10 @@ export class AnimeService implements OnModuleInit {
         callback_data: `page_${anime._id}_${page - 1}`,
       });
     }
+    navButtons.push({
+      text: `Page ${page + 1}/${totalPages}`,
+      callback_data: 'noop',
+    });
     if (end < anime.files.length) {
       console.log('end < anime.files.length', end, anime.files.length);
       navButtons.push({

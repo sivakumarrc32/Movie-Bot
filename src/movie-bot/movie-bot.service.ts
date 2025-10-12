@@ -116,6 +116,9 @@ export class MovieBotService implements OnModuleInit {
     this.bot.action(/^(all|file|page)_/, (ctx) =>
       this.handleEpisodeSelection(ctx),
     );
+    this.bot.action('noop', async (ctx) => {
+      await ctx.answerCbQuery('❌ This is Not a Button');
+    });
   }
 
   expireAt = new Date(Date.now() + 2 * 60 * 1000);
@@ -190,6 +193,7 @@ export class MovieBotService implements OnModuleInit {
       const skip = (page - 1) * limit;
 
       const totalMovies = await this.movieModel.countDocuments();
+      const totalPages = Math.ceil(totalMovies / limit);
       const movies = await this.movieModel
         .find({}, 'name')
         .skip(skip)
@@ -213,6 +217,10 @@ export class MovieBotService implements OnModuleInit {
           text: '⬅️ Back',
           callback_data: `list_page_${page - 1}`,
         });
+      buttons.push({
+        text: `Pages: ${page}/${totalPages}`,
+        callback_data: 'noop',
+      });
       if (skip + limit < totalMovies)
         buttons.push({
           text: 'Next ➡️',
@@ -545,6 +553,7 @@ export class MovieBotService implements OnModuleInit {
     const end = start + this.PAGE_SIZE;
 
     const files = movie.files.slice(start, end);
+    const totalPages = Math.ceil(movie.files.length / this.PAGE_SIZE);
 
     const buttons: any[] = [];
 
@@ -576,6 +585,10 @@ export class MovieBotService implements OnModuleInit {
         callback_data: `page_${movie._id}_${page - 1}`,
       });
     }
+    navButtons.push({
+      text: `Pages ${page + 1}/${totalPages}`,
+      callback_data: 'noop',
+    });
     if (end < movie.files.length) {
       console.log('end < anime.files.length', end, movie.files.length);
       navButtons.push({
