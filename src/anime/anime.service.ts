@@ -183,9 +183,9 @@ export class AnimeService implements OnModuleInit {
     }
   }
   async sendAnimeList(ctx, page = 1, isEdit = false) {
-    const ani = await ctx.replyWithAnimation(
-      'CAACAgUAAxkBAAIBpmje0EtKLDDHmnxLwL1Y8l7HtN0LAAJ9GQACSsz4Vv2odmJpcRPVNgQ',
-    );
+    // const ani = await ctx.replyWithAnimation(
+    //   'CAACAgUAAxkBAAIBpmje0EtKLDDHmnxLwL1Y8l7HtN0LAAJ9GQACSsz4Vv2odmJpcRPVNgQ',
+    // );
     try {
       const limit = 15;
       const skip = (page - 1) * limit;
@@ -209,7 +209,7 @@ export class AnimeService implements OnModuleInit {
       );
       msg += `\n👉 Type the <b>Movie Name</b> to get Movie.\n`;
 
-      await ctx.deleteMessage(ani.message_id);
+      // await ctx.deleteMessage(ani.message_id);
 
       const buttons: { text: string; callback_data: string }[] = [];
       if (page > 1)
