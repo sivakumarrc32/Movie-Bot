@@ -423,11 +423,11 @@ export class UploadBotService implements OnModuleInit {
           delete this.sessions[chatId];
         }
 
-        const mainChannelId =
-          session.data.type ===
-          ['movie', 'movieEpisode'].includes(session.data.type)
-            ? this.mainMovieChennalId
-            : this.mainAnimeChennalId;
+        const mainChannelId = ['movie', 'movieEpisode'].includes(
+          session.data.type,
+        )
+          ? this.mainMovieChennalId
+          : this.mainAnimeChennalId;
 
         if (['movie', 'movieEpisode'].includes(session.data.type)) {
           if (session.data.poster?.chatId && session.data.poster?.messageId) {
