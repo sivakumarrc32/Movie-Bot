@@ -212,7 +212,7 @@ export class UploadBotService implements OnModuleInit {
         if ('document' in msg) {
           file = msg.document;
         } else if ('video' in msg) {
-          file = msg.video;
+          file = msg.video;   
         }
 
         let fileName;
@@ -414,6 +414,78 @@ export class UploadBotService implements OnModuleInit {
                 );
                 await ctx.reply('✅ Anime episode uploaded successfully!');
               }
+
+              const mainChannelId = ['movie', 'movieEpisode'].includes(
+                session.data.type,
+              )
+                ? this.mainMovieChennalId
+                : this.mainAnimeChennalId;
+
+              if (['movie', 'movieEpisode'].includes(session.data.type)) {
+                if (
+                  session.data.poster?.chatId &&
+                  session.data.poster?.messageId
+                ) {
+                  await this.safeSend(() =>
+                    ctx.telegram.forwardMessage(
+                      mainChannelId,
+                      session.data.poster.chatId,
+                      session.data.poster.messageId,
+                    ),
+                  );
+                }
+                const payload = Buffer.from(
+                  session.data.name || session.data.epiname,
+                ).toString('base64');
+
+                const messageText = `\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Movie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed 👇🏻</b> \n <a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Direct File </a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
+
+                await ctx.telegram.sendMessage(mainChannelId, messageText, {
+                  parse_mode: 'HTML',
+                  reply_markup: {
+                    inline_keyboard: [
+                      [
+                        {
+                          text: 'Direct Link',
+                          url: `https://t.me/lord_fourth_movie_bot?start=${payload}`,
+                        },
+                      ],
+                    ],
+                  },
+                });
+              } else if (['anime', 'aepisode'].includes(session.data.type)) {
+                if (
+                  session.data.poster?.chatId &&
+                  session.data.poster?.messageId
+                ) {
+                  await this.safeSend(() =>
+                    ctx.telegram.forwardMessage(
+                      mainChannelId,
+                      session.data.poster.chatId,
+                      session.data.poster.messageId,
+                    ),
+                  );
+                }
+                const payload = Buffer.from(
+                  session.data.name || session.data.epiname,
+                ).toString('base64');
+
+                const messageText = `\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Anime/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed 👇🏻</b> \n <a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Direct File </a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
+
+                await ctx.telegram.sendMessage(mainChannelId, messageText, {
+                  parse_mode: 'HTML',
+                  reply_markup: {
+                    inline_keyboard: [
+                      [
+                        {
+                          text: 'Direct Link',
+                          url: `https://t.me/lord_fourth_anime_bot?start=${payload}`,
+                        },
+                      ],
+                    ],
+                  },
+                });
+              }
             } catch (err) {
               console.error('DB save error:', err.message);
               await ctx.reply('❌ Error saving movie to DB.');
@@ -421,72 +493,6 @@ export class UploadBotService implements OnModuleInit {
           }
 
           delete this.sessions[chatId];
-        }
-
-        const mainChannelId = ['movie', 'movieEpisode'].includes(
-          session.data.type,
-        )
-          ? this.mainMovieChennalId
-          : this.mainAnimeChennalId;
-
-        if (['movie', 'movieEpisode'].includes(session.data.type)) {
-          if (session.data.poster?.chatId && session.data.poster?.messageId) {
-            await this.safeSend(() =>
-              ctx.telegram.forwardMessage(
-                mainChannelId,
-                session.data.poster.chatId,
-                session.data.poster.messageId,
-              ),
-            );
-          }
-          const payload = Buffer.from(
-            session.data.name || session.data.epiname,
-          ).toString('base64');
-
-          const messageText = `\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Movie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed 👇🏻</b> \n <a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Direct File </a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
-
-          await ctx.telegram.sendMessage(mainChannelId, messageText, {
-            parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: 'Direct Link',
-                    url: `https://t.me/lord_fourth_movie_bot?start=${payload}`,
-                  },
-                ],
-              ],
-            },
-          });
-        } else if (['anime', 'aepisode'].includes(session.data.type)) {
-          if (session.data.poster?.chatId && session.data.poster?.messageId) {
-            await this.safeSend(() =>
-              ctx.telegram.forwardMessage(
-                mainChannelId,
-                session.data.poster.chatId,
-                session.data.poster.messageId,
-              ),
-            );
-          }
-          const payload = Buffer.from(
-            session.data.name || session.data.epiname,
-          ).toString('base64');
-
-          const messageText = `\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Anime/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed 👇🏻</b> \n <a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Direct File </a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
-
-          await ctx.telegram.sendMessage(mainChannelId, messageText, {
-            parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: 'Direct Link',
-                    url: `https://t.me/lord_fourth_anime_bot?start=${payload}`,
-                  },
-                ],
-              ],
-            },
-          });
         }
       } catch (err) {
         console.error('Document upload error:', err.message);
