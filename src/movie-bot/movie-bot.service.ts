@@ -10,6 +10,7 @@ import { Movie } from './movie.schema';
 import { ConfigService } from '@nestjs/config';
 import { User } from './user.schema';
 import { TempMessage } from './temp.schema';
+import { pay } from 'node_modules/telegraf/typings/button';
 
 @Injectable()
 export class MovieBotService implements OnModuleInit {
@@ -85,7 +86,22 @@ export class MovieBotService implements OnModuleInit {
     }
   }
   onModuleInit() {
-    this.bot.start((ctx) => this.start(ctx));
+    // this.bot.start((ctx) => this.start(ctx));
+    this.bot.start(async (ctx) => {
+      let payload =
+        ctx.payload || ctx.message?.text?.split(' ').slice(1).join(' ');
+
+      if (payload) {
+        try {
+          payload = Buffer.from(payload, 'base64').toString('utf-8');
+        } catch (e) {
+          payload = decodeURIComponent(payload);
+          console.log('Payload:', e.message); // fallback if normal encoding
+        }
+      }
+      console.log('Payload:', payload);
+      await this.start(ctx, payload);
+    });
     this.bot.command('help', (ctx) => this.help(ctx));
     this.bot.command('list', async (ctx) => {
       await this.sendMovieList(ctx, 1, false); // false => not editing, fresh reply
@@ -123,8 +139,14 @@ export class MovieBotService implements OnModuleInit {
 
   expireAt = new Date(Date.now() + 2 * 60 * 1000);
 
-  async start(ctx) {
+  async start(ctx, payload?: string) {
     try {
+      if (payload) {
+        const isJoined = await this.checkSubscription(ctx);
+        if (!isJoined) return;
+        await this.sendMovieName(ctx, payload);
+        return;
+      }
       const isJoined = await this.checkSubscription(ctx);
       if (!isJoined) return;
       const userName = ctx.from.username;
@@ -253,6 +275,94 @@ export class MovieBotService implements OnModuleInit {
 
     try {
       const name = ctx.message.text.trim();
+      const movie = await this.movieModel.findOne({
+        name: { $regex: name, $options: 'i' },
+      });
+
+      if (!movie) {
+        await ctx.deleteMessage(anime.message_id);
+        const msg = await ctx.reply(
+          `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Movie is not Available in My Database.</b>\n\n<b>Movie Name Must be in Correct Format</b>\n\n<b><u>Examples for Typing</u></b>\n 1.(Web Series Name) S01 or (Web Series Name) S02 \n2. (Movie Name) \n3. (Web Series Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Movie Available in our bot Using <b> List of Movies</b> </i> \n\n <i>If the Movie is not in the List. Kindly Contact the Admin Using <b>Request Movie</b></i>`,
+          {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: 'Request Movie',
+                    url: 'https://t.me/Feedback_LordFourth_Bot?start=_tgr_W-HlEd45Yzll',
+                  },
+                  {
+                    text: 'List of Movies',
+                    callback_data: 'list',
+                  },
+                ],
+              ],
+            },
+          },
+        );
+        await this.tempMessageModel.create({
+          chatId: ctx.chat.id,
+          messageId: msg.message_id,
+          expireAt: this.expireAt,
+        });
+        return;
+      }
+
+      const sentMessages: { chatId: number; messageId: number }[] = [];
+
+      // Poster
+      if (movie.poster?.chatId && movie.poster?.messageId) {
+        const posterMsg = await ctx.telegram.forwardMessage(
+          ctx.chat.id,
+          movie.poster.chatId,
+          movie.poster.messageId,
+        );
+        sentMessages.push({
+          chatId: ctx.chat.id,
+          messageId: posterMsg.message_id,
+        });
+      }
+
+      // // Files
+      // for (const file of movie.files) {
+      //   const fileMsg = await ctx.telegram.forwardMessage(
+      //     ctx.chat.id,
+      //     file.chatId,
+      //     file.messageId,
+      //   );
+      //   sentMessages.push({
+      //     chatId: ctx.chat.id,
+      //     messageId: fileMsg.message_id,
+      //   });
+      // }
+
+      await this.sendEpisodePage(ctx, movie, 0);
+
+      await ctx.deleteMessage(anime.message_id);
+
+      const expireAt = new Date(Date.now() + 5 * 60 * 1000);
+
+      for (const msg of sentMessages) {
+        await this.tempMessageModel.create({
+          chatId: msg.chatId,
+          messageId: msg.messageId,
+          userId: ctx.from.id,
+          expireAt,
+        });
+        console.log('message saved');
+      }
+    } catch (err) {
+      console.error('Movie search error:', err.message);
+    }
+  }
+
+  async sendMovieName(ctx, name: string) {
+    const anime = await ctx.replyWithAnimation(
+      'CAACAgUAAxkBAAP2aMg-M9L2BweitSj2A-C__K4Fm-oAAmYZAALItUBW-knJhi1GBE42BA',
+    );
+
+    try {
       const movie = await this.movieModel.findOne({
         name: { $regex: name, $options: 'i' },
       });

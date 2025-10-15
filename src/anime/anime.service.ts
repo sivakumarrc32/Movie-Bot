@@ -84,7 +84,22 @@ export class AnimeService implements OnModuleInit {
   }
 
   onModuleInit() {
-    this.bot.start((ctx) => this.start(ctx));
+    // this.bot.start((ctx) => this.start(ctx));
+    this.bot.start(async (ctx) => {
+      let payload =
+        ctx.payload || ctx.message?.text?.split(' ').slice(1).join(' ');
+
+      if (payload) {
+        try {
+          payload = Buffer.from(payload, 'base64').toString('utf-8');
+        } catch (e) {
+          payload = decodeURIComponent(payload);
+          console.log('Payload:', e.message); // fallback if normal encoding
+        }
+      }
+      console.log('Payload:', payload);
+      await this.start(ctx, payload);
+    });
     this.bot.command('help', (ctx) => this.help(ctx));
     this.bot.command('list', async (ctx) => {
       await this.sendAnimeList(ctx, 1, false); // false => not editing, fresh reply
@@ -118,8 +133,14 @@ export class AnimeService implements OnModuleInit {
     // this.bot.on('message', (ctx) => console.log(ctx.message));
   }
 
-  async start(ctx) {
+  async start(ctx, payload?: string) {
     try {
+      if (payload) {
+        const isJoined = await this.checkSubscription(ctx);
+        if (!isJoined) return;
+        await this.sendAnimeName(ctx, payload);
+        return;
+      }
       const isJoined = await this.checkSubscription(ctx);
       if (!isJoined) return;
       const userName = ctx.from.username;
@@ -254,6 +275,98 @@ export class AnimeService implements OnModuleInit {
 
     try {
       const name = ctx.message.text.trim();
+      const anime = await this.animeModel.findOne({
+        name: { $regex: name, $options: 'i' },
+      });
+
+      if (!anime) {
+        await ctx.deleteMessage(ani.message_id);
+        const msg = await ctx.reply(
+          `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Anime is not Available in My Database.</b>\n\n<b>Anime Name Must be in Correct Format</b>\n\n <b><u>Examples for Typing</u></b>\n 1.(Anime Name) S01 or (Anime Name) S02 \n2. (Anime Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Anime Available in our bot Using <b> List of Animes</b> </i> \n\n <i>If the Anime is not in the List. Kindly Contact the Admin Using <b>Request Anime</b></i>`,
+          {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: 'Request Anime',
+                    url: 'https://t.me/Feedback_LordFourth_Bot?start=_tgr_W-HlEd45Yzll',
+                  },
+                  {
+                    text: 'List of Animes',
+                    callback_data: 'list',
+                  },
+                ],
+              ],
+            },
+          },
+        );
+
+        await this.tempMessageModel.create({
+          chatId: ctx.chat.id,
+          messageId: msg.message_id,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
+          userId: ctx.from.id,
+        });
+
+        return;
+      }
+
+      const sentMessages: { chatId: number; messageId: number }[] = [];
+
+      // Poster
+      if (anime.poster?.chatId && anime.poster?.messageId) {
+        const posterMsg = await ctx.telegram.forwardMessage(
+          ctx.chat.id,
+          anime.poster.chatId,
+          anime.poster.messageId,
+        );
+        sentMessages.push({
+          chatId: ctx.chat.id,
+          messageId: posterMsg.message_id,
+        });
+      }
+
+      // // Files
+      // for (const file of anime.files) {
+      //   const fileMsg = await ctx.telegram.forwardMessage(
+      //     ctx.chat.id,
+      //     file.chatId,
+      //     file.messageId,
+      //   );
+      //   sentMessages.push({
+      //     chatId: ctx.chat.id,
+      //     messageId: fileMsg.message_id,
+      //   });
+      // }
+      await this.sendEpisodePage(ctx, anime, 0);
+
+      await ctx.deleteMessage(ani.message_id);
+      const expireAt = new Date(Date.now() + 5 * 60 * 1000);
+
+      for (const msg of sentMessages) {
+        await this.tempMessageModel.create({
+          chatId: ctx.chat.id,
+          messageId: msg.messageId,
+          userId: ctx.from.id,
+          expireAt,
+        });
+        console.log('message saved');
+      }
+    } catch (err) {
+      console.error('Anime search error:', err.message);
+    }
+  }
+
+  async sendAnimeName(ctx, name?: string) {
+    // if (ctx.message.text.startsWith('/')) return;
+
+    const ani = await ctx.replyWithAnimation(
+      'CAACAgUAAxkBAAIBpmje0EtKLDDHmnxLwL1Y8l7HtN0LAAJ9GQACSsz4Vv2odmJpcRPVNgQ',
+    );
+
+    try {
+      // const name = ctx.message.text.trim();
       const anime = await this.animeModel.findOne({
         name: { $regex: name, $options: 'i' },
       });
