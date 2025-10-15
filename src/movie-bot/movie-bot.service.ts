@@ -444,6 +444,17 @@ export class MovieBotService implements OnModuleInit {
             `❌ Could not send to ${user.telegramId}:`,
             err.message,
           );
+          const errorMsg = err.message || '';
+          if (
+            errorMsg.includes('bot was blocked by the user') ||
+            errorMsg.includes('user is deactivated') ||
+            errorMsg.includes('chat not found')
+          ) {
+            console.log(`🗑️ Removing inactive user: ${user.telegramId}`);
+            await this.userModel.deleteOne({ telegramId: user.telegramId });
+          } else {
+            console.error(`⚠️ Error sending to ${user.telegramId}:`, errorMsg);
+          }
         }
       }
 
