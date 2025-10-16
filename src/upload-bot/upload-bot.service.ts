@@ -180,7 +180,7 @@ export class UploadBotService implements OnModuleInit {
 
         const sent = await this.safeSend(() =>
           ctx.telegram.sendPhoto(targetChannel, photo.file_id, {
-            caption: `🎬 ${session.data.name}\n\n${caption}`,
+            caption: `${caption}`,
           }),
         );
 
