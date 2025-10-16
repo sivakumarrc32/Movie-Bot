@@ -40,7 +40,7 @@ export class UploadBotService implements OnModuleInit {
     this.animeChannelId = '-1003158050881';
     this.mainMovieChennalId = '-1002154770258';
     this.mainAnimeChennalId = '-1002467182309';
-    this.ownerId = [992923409, 1984132022, 2092885661];
+    this.ownerId = [992923409, 2092885661];
   }
 
   private checkOwner(ctx: any): boolean {
@@ -180,7 +180,8 @@ export class UploadBotService implements OnModuleInit {
 
         const sent = await this.safeSend(() =>
           ctx.telegram.sendPhoto(targetChannel, photo.file_id, {
-            caption: `${caption}`,
+            caption: `<b>${caption}</b>`,
+            parse_mode: 'HTML',
           }),
         );
 
