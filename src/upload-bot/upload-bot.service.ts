@@ -440,7 +440,7 @@ export class UploadBotService implements OnModuleInit {
               session.data.name || session.data.epiname,
             ).toString('base64');
 
-            const messageText = `\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Movie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed 👇🏻</b> \n <a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Direct File </a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
+            const messageText = `\n\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Movie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
 
             await ctx.telegram.sendMessage(mainChannelId, messageText, {
               parse_mode: 'HTML',
@@ -448,7 +448,7 @@ export class UploadBotService implements OnModuleInit {
                 inline_keyboard: [
                   [
                     {
-                      text: 'Direct Link',
+                      text: 'Direct File Link',
                       url: `https://t.me/lord_fourth_movie_bot?start=${payload}`,
                     },
                   ],
@@ -469,7 +469,7 @@ export class UploadBotService implements OnModuleInit {
               session.data.name || session.data.epiname,
             ).toString('base64');
 
-            const messageText = `\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Anime/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed 👇🏻</b> \n <a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Direct File </a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
+            const messageText = `\n\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Anime/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Get Direct File </a>\n<a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Get Direct File </a>\n<a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Get Direct File </a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
 
             await ctx.telegram.sendMessage(mainChannelId, messageText, {
               parse_mode: 'HTML',
@@ -477,7 +477,7 @@ export class UploadBotService implements OnModuleInit {
                 inline_keyboard: [
                   [
                     {
-                      text: 'Direct Link',
+                      text: 'Direct File Link',
                       url: `https://t.me/lord_fourth_anime_bot?start=${payload}`,
                     },
                   ],
