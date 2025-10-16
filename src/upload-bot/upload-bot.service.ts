@@ -421,7 +421,7 @@ export class UploadBotService implements OnModuleInit {
             }
           }
 
-          const mainChannelId = ['movie', 'movieEpisode'].includes(
+          const mainChannelId = ['movie', 'mepisode'].includes(
             session.data.type,
           )
             ? this.mainMovieChennalId
