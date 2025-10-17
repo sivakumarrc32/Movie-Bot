@@ -427,64 +427,86 @@ export class UploadBotService implements OnModuleInit {
             ? this.mainMovieChennalId
             : this.mainAnimeChennalId;
 
-          if (['movie', 'mepisode'].includes(session.data.type)) {
-            if (session.data.poster?.chatId && session.data.poster?.messageId) {
-              await this.safeSend(() =>
-                ctx.telegram.forwardMessage(
-                  mainChannelId,
-                  session.data.poster.chatId,
-                  session.data.poster.messageId,
-                ),
-              );
+          let posterData = session.data.poster;
+
+          if (session.data.type === 'mepisode') {
+            const parentMovie = await this.movieModel.findOne({
+              name: session.data.epiname,
+            });
+            if (parentMovie?.poster) {
+              posterData = parentMovie.poster;
             }
+          }
+
+          if (session.data.type === 'aepisode') {
+            const parentAnime = await this.animeModel.findOne({
+              name: session.data.epiname,
+            });
+            if (parentAnime?.poster) {
+              posterData = parentAnime.poster;
+            }
+          }
+
+          if (['movie', 'mepisode'].includes(session.data.type)) {
             const payload = Buffer.from(
               session.data.name || session.data.epiname,
             ).toString('base64');
 
             const messageText = `\n\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Movie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
 
-            await ctx.telegram.sendMessage(mainChannelId, messageText, {
-              parse_mode: 'HTML',
-              reply_markup: {
-                inline_keyboard: [
-                  [
-                    {
-                      text: 'Direct File Link',
-                      url: `https://t.me/lord_fourth_movie_bot?start=${payload}`,
-                    },
-                  ],
-                ],
-              },
-            });
-          } else if (['anime', 'aepisode'].includes(session.data.type)) {
-            if (session.data.poster?.chatId && session.data.poster?.messageId) {
+            if (posterData?.chatId && posterData?.messageId) {
               await this.safeSend(() =>
-                ctx.telegram.forwardMessage(
+                ctx.telegram.copyMessage(
                   mainChannelId,
-                  session.data.poster.chatId,
-                  session.data.poster.messageId,
+                  posterData.chatId,
+                  posterData.messageId,
+                  {
+                    caption: messageText,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                      inline_keyboard: [
+                        [
+                          {
+                            text: 'Direct Link',
+                            url: `https://t.me/lord_fourth_movie_bot?start=${payload}`,
+                          },
+                        ],
+                      ],
+                    },
+                  },
                 ),
               );
             }
+          } else if (['anime', 'aepisode'].includes(session.data.type)) {
             const payload = Buffer.from(
               session.data.name || session.data.epiname,
             ).toString('base64');
 
             const messageText = `\n\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Anime/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Get Direct File </a>\n<a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Get Direct File </a>\n<a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Get Direct File </a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
 
-            await ctx.telegram.sendMessage(mainChannelId, messageText, {
-              parse_mode: 'HTML',
-              reply_markup: {
-                inline_keyboard: [
-                  [
-                    {
-                      text: 'Direct File Link',
-                      url: `https://t.me/lord_fourth_anime_bot?start=${payload}`,
+            if (posterData?.chatId && posterData?.messageId) {
+              await this.safeSend(() =>
+                ctx.telegram.copyMessage(
+                  mainChannelId,
+                  posterData.chatId,
+                  posterData.messageId,
+                  {
+                    caption: messageText,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                      inline_keyboard: [
+                        [
+                          {
+                            text: 'Direct Link',
+                            url: `https://t.me/lord_fourth_anime_bot?start=${payload}`,
+                          },
+                        ],
+                      ],
                     },
-                  ],
-                ],
-              },
-            });
+                  },
+                ),
+              );
+            }
           }
           delete this.sessions[chatId];
         }
