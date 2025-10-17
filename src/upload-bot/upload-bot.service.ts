@@ -452,7 +452,7 @@ export class UploadBotService implements OnModuleInit {
               session.data.name || session.data.epiname,
             ).toString('base64');
 
-            const messageText = `\n\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Movie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
+            const messageText = `\n\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Movie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> \n\n<i><b>Note :</b>Direct File than Varum (No LinkShortner like gplink or Something)</i>`;
 
             if (posterData?.chatId && posterData?.messageId) {
               await this.safeSend(() =>
