@@ -427,7 +427,7 @@ export class UploadBotService implements OnModuleInit {
             ? this.mainMovieChennalId
             : this.mainAnimeChennalId;
 
-          if (['movie', 'movieEpisode'].includes(session.data.type)) {
+          if (['movie', 'mepisode'].includes(session.data.type)) {
             if (session.data.poster?.chatId && session.data.poster?.messageId) {
               await this.safeSend(() =>
                 ctx.telegram.forwardMessage(
