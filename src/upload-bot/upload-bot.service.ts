@@ -137,6 +137,29 @@ export class UploadBotService implements OnModuleInit {
             ? ctx.reply('🖼️ Send anime poster:')
             : ctx.reply('🖼️ Send movie poster:');
         }
+        if (session.step === 'broadcastMain') {
+          const answer = ctx.message.text.trim().toLowerCase();
+          console.log(answer);
+          if (answer === 'yes' || answer === 'y') {
+            session.data.broadcastMain = true;
+            session.step = ['movie', 'anime'].includes(session.data.type)
+              ? 'expectedFiles'
+              : 'expectedEpiFiles';
+            return ctx.reply(` 📊 How many files to upload? (Enter number)`);
+          } else if (answer === 'no' || answer === 'n') {
+            session.data.broadcastMain = false;
+            session.step = ['movie', 'anime'].includes(session.data.type)
+              ? 'expectedFiles'
+              : 'expectedEpiFiles';
+            return ctx.reply(` 📊  How many files to upload? (Enter number)`);
+          } else {
+            await ctx.reply(
+              'Invalid input. Please enter "yes or y" or "no or n" .',
+            );
+            session.step = 'broadcastMain';
+            return;
+          }
+        }
         if (session.step === 'expectedFiles') {
           session.data.expectedFiles = parseInt(ctx.message.text, 10);
           session.data.files = [];
@@ -149,9 +172,11 @@ export class UploadBotService implements OnModuleInit {
           return ctx.reply('Enter the Episode Numbers :');
         }
         if (session.step === 'episodeNumber') {
-          session.step = 'expectedEpiFiles';
+          session.step = 'broadcastMain';
           session.data.epiNumber = ctx.message.text.trim();
-          return ctx.reply('📊 How many files to upload? (Enter number)');
+          return ctx.reply(
+            'Do you want to broadcast this episode? (yes or no)',
+          );
         }
         if (session.step === 'expectedEpiFiles') {
           session.data.expectedEpiFiles = parseInt(ctx.message.text, 10);
@@ -192,8 +217,8 @@ export class UploadBotService implements OnModuleInit {
           };
         }
 
-        session.step = 'expectedFiles';
-        await ctx.reply('📊 How many files to upload? (Enter number)');
+        session.step = 'broadcastMain';
+        await ctx.reply('Do you want to broadcast main poster? (yes/no)');
       } catch (err) {
         console.error('Poster upload error:', err.message);
       }
@@ -349,13 +374,13 @@ export class UploadBotService implements OnModuleInit {
             try {
               const movie = new this.movieModel(session.data);
               await movie.save();
-              await this.movieBotService.sendBroadcast(
-                `✨ <i><b>${movie.name}</b></i> Movie Added! ✨\n\n` +
-                  `👉 Type the <b>Movie Name</b> and get the file instantly.\n\n` +
-                  `🍿 Enjoy Watching!\n\n` +
-                  `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n` +
-                  `📢 Join Channel: <a href="https://t.me/Cinemxtic_Univerz">CINEMATIC UNIVERSE!</a> \n\n`,
-              );
+              // await this.movieBotService.sendBroadcast(
+              //   `✨ <i><b>${movie.name}</b></i> Movie Added! ✨\n\n` +
+              //     `👉 Type the <b>Movie Name</b> and get the file instantly.\n\n` +
+              //     `🍿 Enjoy Watching!\n\n` +
+              //     `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n` +
+              //     `📢 Join Channel: <a href="https://t.me/Cinemxtic_Univerz">CINEMATIC UNIVERSE!</a> \n\n`,
+              // );
               await ctx.reply('✅ Movie uploaded successfully!');
             } catch (dbErr) {
               console.error('DB save error:', dbErr.message);
@@ -369,14 +394,14 @@ export class UploadBotService implements OnModuleInit {
               if (movieEpisode) {
                 movieEpisode.files.push(...session.data.files);
                 await movieEpisode.save();
-                await this.movieBotService.sendBroadcast(
-                  `✨ <i><b>${movieEpisode.name} ${session.data.epiNumber}</b></i> Movie Episode or Season Added! ✨\n\n` +
-                    `👉 Type the <b>Movie Name</b> and get the file instantly.\n\n` +
-                    `Join the Bot For Anime : @lord_fourth_movie_bot` +
-                    `🍿 Enjoy Watching!\n\n` +
-                    `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n` +
-                    `📢 Join Channel: <a href="https://t.me/Cinemxtic_Univerz">CINEMATIC UNIVERSE!</a> \n\n`,
-                );
+                // await this.movieBotService.sendBroadcast(
+                //   `✨ <i><b>${movieEpisode.name} ${session.data.epiNumber}</b></i> Movie Episode or Season Added! ✨\n\n` +
+                //     `👉 Type the <b>Movie Name</b> and get the file instantly.\n\n` +
+                //     `Join the Bot For Anime : @lord_fourth_movie_bot` +
+                //     `🍿 Enjoy Watching!\n\n` +
+                //     `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n` +
+                //     `📢 Join Channel: <a href="https://t.me/Cinemxtic_Univerz">CINEMATIC UNIVERSE!</a> \n\n`,
+                // );
                 await ctx.reply('✅ Movie episode uploaded successfully!');
               }
             } catch (err) {
@@ -387,13 +412,13 @@ export class UploadBotService implements OnModuleInit {
             try {
               const anime = new this.animeModel(session.data);
               await anime.save();
-              await this.animeBotService.sendBroadcast(
-                `✨ <i><b>${anime.name}</b></i> Anime Added! ✨\n\n` +
-                  `👉 Type the <b>Anime Name</b> and get the file instantly.\n\n` +
-                  `Join the Bot For Anime : @lord_fourth_anime_bot` +
-                  `🍿 Enjoy Watching!\n\n` +
-                  `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n`,
-              );
+              // await this.animeBotService.sendBroadcast(
+              //   `✨ <i><b>${anime.name}</b></i> Anime Added! ✨\n\n` +
+              //     `👉 Type the <b>Anime Name</b> and get the file instantly.\n\n` +
+              //     `Join the Bot For Anime : @lord_fourth_anime_bot` +
+              //     `🍿 Enjoy Watching!\n\n` +
+              //     `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n`,
+              // );
               await ctx.reply('✅ Anime uploaded successfully!');
             } catch (dbErr) {
               console.error('DB save error:', dbErr.message);
@@ -407,12 +432,12 @@ export class UploadBotService implements OnModuleInit {
               if (animeEpisode) {
                 animeEpisode.files.push(...session.data.files);
                 await animeEpisode.save();
-                await this.animeBotService.sendBroadcast(
-                  `✨ <i><b>${animeEpisode.name} ${session.data.epiNumber}</b></i> Anime Episode or Season Added! ✨\n\n` +
-                    `👉 Type the <b>Anime Name</b> and get the file instantly.\n\n` +
-                    `🍿 Enjoy Watching!\n\n` +
-                    `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n`,
-                );
+                // await this.animeBotService.sendBroadcast(
+                //   `✨ <i><b>${animeEpisode.name} ${session.data.epiNumber}</b></i> Anime Episode or Season Added! ✨\n\n` +
+                //     `👉 Type the <b>Anime Name</b> and get the file instantly.\n\n` +
+                //     `🍿 Enjoy Watching!\n\n` +
+                //     `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n`,
+                // );
                 await ctx.reply('✅ Anime episode uploaded successfully!');
               }
             } catch (err) {
@@ -421,91 +446,101 @@ export class UploadBotService implements OnModuleInit {
             }
           }
 
-          const mainChannelId = ['movie', 'mepisode'].includes(
-            session.data.type,
-          )
-            ? this.mainMovieChennalId
-            : this.mainAnimeChennalId;
+          if (session.data.broadcastMain) {
+            const mainChannelId = ['movie', 'mepisode'].includes(
+              session.data.type,
+            )
+              ? this.mainMovieChennalId
+              : this.mainAnimeChennalId;
 
-          let posterData = session.data.poster;
+            let posterData = session.data.poster;
 
-          if (session.data.type === 'mepisode') {
-            const parentMovie = await this.movieModel.findOne({
-              name: session.data.epiname,
-            });
-            if (parentMovie?.poster) {
-              posterData = parentMovie.poster;
+            if (session.data.type === 'mepisode') {
+              const parentMovie = await this.movieModel.findOne({
+                name: session.data.epiname,
+              });
+              if (parentMovie?.poster) {
+                posterData = parentMovie.poster;
+              }
             }
-          }
 
-          if (session.data.type === 'aepisode') {
-            const parentAnime = await this.animeModel.findOne({
-              name: session.data.epiname,
-            });
-            if (parentAnime?.poster) {
-              posterData = parentAnime.poster;
+            if (session.data.type === 'aepisode') {
+              const parentAnime = await this.animeModel.findOne({
+                name: session.data.epiname,
+              });
+              if (parentAnime?.poster) {
+                posterData = parentAnime.poster;
+              }
             }
-          }
 
-          if (['movie', 'mepisode'].includes(session.data.type)) {
-            const payload = Buffer.from(
-              session.data.name || session.data.epiname,
-            ).toString('base64');
+            if (['movie', 'mepisode'].includes(session.data.type)) {
+              const payload = Buffer.from(
+                session.data.name || session.data.epiname,
+              ).toString('base64');
 
-            const messageText = `\n\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Movie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> \n\n<i><b>Note :</b>Direct File than Varum (No LinkShortner like gplink or Something)</i>`;
+              const messageText = `\n\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Movie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> \n\n<i><b>Note :</b>Direct File than Varum (No LinkShortner like gplink or Something)</i>`;
 
-            if (posterData?.chatId && posterData?.messageId) {
-              await this.safeSend(() =>
-                ctx.telegram.copyMessage(
-                  mainChannelId,
-                  posterData.chatId,
-                  posterData.messageId,
-                  {
-                    caption: messageText,
-                    parse_mode: 'HTML',
-                    reply_markup: {
-                      inline_keyboard: [
-                        [
-                          {
-                            text: 'Direct Link',
-                            url: `https://t.me/lord_fourth_movie_bot?start=${payload}`,
-                          },
+              if (posterData?.chatId && posterData?.messageId) {
+                await this.safeSend(() =>
+                  ctx.telegram.copyMessage(
+                    mainChannelId,
+                    posterData.chatId,
+                    posterData.messageId,
+                    {
+                      caption: messageText,
+                      parse_mode: 'HTML',
+                      reply_markup: {
+                        inline_keyboard: [
+                          [
+                            {
+                              text: 'Direct File Link',
+                              url: `https://t.me/lord_fourth_movie_bot?start=${payload}`,
+                            },
+                            {
+                              text: 'Movie Bot',
+                              url: 'https://t.me/lord_fourth_movie_bot',
+                            },
+                          ],
                         ],
-                      ],
+                      },
                     },
-                  },
-                ),
-              );
-            }
-          } else if (['anime', 'aepisode'].includes(session.data.type)) {
-            const payload = Buffer.from(
-              session.data.name || session.data.epiname,
-            ).toString('base64');
+                  ),
+                );
+              }
+            } else if (['anime', 'aepisode'].includes(session.data.type)) {
+              const payload = Buffer.from(
+                session.data.name || session.data.epiname,
+              ).toString('base64');
 
-            const messageText = `\n\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Anime/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Get Direct File </a>\n<a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Get Direct File </a>\n<a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Get Direct File </a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
+              const messageText = `\n\n<i><b>${session.data.name || session.data.epiname} ${session.data.epiNumber || ''}</b></i> Anime/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Get Direct File </a>\n<a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Get Direct File </a>\n<a href= 'https://t.me/lord_fourth_anime_bot?start=${payload}'>Click Here And Get Direct File </a>\n\n________________________________\n\n <b>Click The Button to Get the Direct File</b> `;
 
-            if (posterData?.chatId && posterData?.messageId) {
-              await this.safeSend(() =>
-                ctx.telegram.copyMessage(
-                  mainChannelId,
-                  posterData.chatId,
-                  posterData.messageId,
-                  {
-                    caption: messageText,
-                    parse_mode: 'HTML',
-                    reply_markup: {
-                      inline_keyboard: [
-                        [
-                          {
-                            text: 'Direct Link',
-                            url: `https://t.me/lord_fourth_anime_bot?start=${payload}`,
-                          },
+              if (posterData?.chatId && posterData?.messageId) {
+                await this.safeSend(() =>
+                  ctx.telegram.copyMessage(
+                    mainChannelId,
+                    posterData.chatId,
+                    posterData.messageId,
+                    {
+                      caption: messageText,
+                      parse_mode: 'HTML',
+                      reply_markup: {
+                        inline_keyboard: [
+                          [
+                            {
+                              text: 'Direct File Link',
+                              url: `https://t.me/lord_fourth_anime_bot?start=${payload}`,
+                            },
+                            {
+                              text: 'Anime Bot',
+                              url: 'https://t.me/lord_fourth_anime_bot',
+                            },
+                          ],
                         ],
-                      ],
+                      },
                     },
-                  },
-                ),
-              );
+                  ),
+                );
+              }
             }
           }
           delete this.sessions[chatId];

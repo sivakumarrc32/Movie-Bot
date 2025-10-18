@@ -10,7 +10,7 @@ import { Movie } from './movie.schema';
 import { ConfigService } from '@nestjs/config';
 import { User } from './user.schema';
 import { TempMessage } from './temp.schema';
-import { pay } from 'node_modules/telegraf/typings/button';
+// import { pay } from 'node_modules/telegraf/typings/button';
 
 @Injectable()
 export class MovieBotService implements OnModuleInit {
@@ -153,7 +153,7 @@ export class MovieBotService implements OnModuleInit {
       const msg = await ctx.replyWithAnimation(
         'CgACAgUAAxkBAAICL2jP7zdwPsDQ8Kocl6nQ1ZXrjI1gAAJYGwACybiAVlKUd15e35cCNgQ', // Local file
         {
-          caption: `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<b>Welcome to Movie Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 1. /list -Use this command to see all available movies.\n\n 2. /help - To view the commands available in this bot \n\n✨ Just type the movie name to get movie instantly!`,
+          caption: `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<i>I'm your friendly Movie Bot 🤖</i>\n\n<b>Here, you can get movie files directly</b> — no link shorteners, no ads, just pure movies! 🍿\n\n👉 <b>Send the correct movie name</b>, and if it’s available in my database, you’ll get the <b>file instantly!</b>\n\n⚡<i>Enjoy your movie time! 🎥💫</i>`,
           parse_mode: 'HTML',
           disable_web_page_preview: true,
           reply_markup: {
@@ -722,7 +722,7 @@ export class MovieBotService implements OnModuleInit {
     if (ctx.updateType === 'callback_query') {
       // edit the inline keyboard when callback
       await ctx.editMessageText(
-        `<b>${movie.name} Episodes (Page ${page + 1})</b>`,
+        `<b>${movie.name} Movie (Page ${page + 1})</b>`,
         {
           parse_mode: 'HTML',
           reply_markup: { inline_keyboard: buttons },
@@ -731,7 +731,7 @@ export class MovieBotService implements OnModuleInit {
     } else {
       // normal reply when user types anime name
       const msg = await ctx.reply(
-        `<b>${movie.name} Episodes (Page ${page + 1})</b>`,
+        `<b>${movie.name} Movie (Page ${page + 1})</b>`,
         {
           parse_mode: 'HTML',
           reply_markup: { inline_keyboard: buttons },

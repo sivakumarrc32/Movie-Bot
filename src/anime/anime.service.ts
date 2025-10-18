@@ -147,7 +147,7 @@ export class AnimeService implements OnModuleInit {
       const message = await ctx.replyWithAnimation(
         'CgACAgUAAxkBAAIBqWje1uUB4Kfp1iH2SFv8PMY12VkXAAJ-GQACSsz4Vly_XR76PxZ-NgQ',
         {
-          caption: `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<b>Welcome to Anime Bot!</b>\n\n\n <u><b><i>Available Commands</i></b></u> \n\n 1. /list -Use this command to see all available Animes.\n\n 2. /help - Steps for How to Get the Anime  \n\n✨ Just type the Anime name to get Anime instantly!`,
+          caption: `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a>\n\n<i>I'm your friendly Anime Bot 🤖</i>\n\n<b>Here, you can get anime files directly</b> — no link shorteners, no ads, just pure animes! 🍿\n\n👉 <b>Send the correct anime name</b>, and if it’s available in my database, you’ll get the <b>file instantly!</b>\n\n⚡<i>Enjoy your anime time! 🎥💫</i>`,
           parse_mode: 'HTML',
           disable_web_page_preview: true,
           reply_markup: {
