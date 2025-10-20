@@ -181,7 +181,7 @@ export class AnimeService implements OnModuleInit {
 
       await this.tempMessageModel.create({
         messageId: message.message_id,
-        chatId: message.chat.id,
+        chatId: ctx.chat.id,
         expireAt: new Date(Date.now() + 5 * 60 * 1000),
         userId: ctx.from.id,
       });
