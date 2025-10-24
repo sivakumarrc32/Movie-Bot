@@ -252,14 +252,17 @@ export class UploadBotService implements OnModuleInit {
               indices.length > 0 ? Math.min(...indices) : -1;
 
             if (firstSepIndex !== -1) {
-              fileName =
+              const Filename =
                 '@LordFourthMovieTamil - ' +
                 file.file_name.slice(firstSepIndex);
+              fileName = Filename.replace(/_/g, ' ');
             } else {
-              fileName = file.file_name;
+              const FileName = file.file_name;
+              fileName = FileName.replace(/_/g, ' ');
             }
           } else {
-            fileName = file.file_name;
+            const FileName = file.file_name;
+            fileName = FileName.replace(/_/g, ' ');
           }
 
           console.log(fileName);
@@ -275,14 +278,17 @@ export class UploadBotService implements OnModuleInit {
               indices.length > 0 ? Math.min(...indices) : -1;
 
             if (firstSepIndex !== -1) {
-              AnimefileName =
+              const animefileName =
                 '@LordFourthMovieTamil - ' +
                 file.file_name.slice(firstSepIndex);
+              AnimefileName = animefileName.replace(/_/g, ' ');
             } else {
-              AnimefileName = file.file_name;
+              const animefileName = file.file_name;
+              AnimefileName = animefileName.replace(/_/g, ' ');
             }
           } else {
-            AnimefileName = file.file_name;
+            const animefileName = file.file_name;
+            AnimefileName = animefileName.replace(/_/g, ' ');
           }
 
           console.log(AnimefileName);

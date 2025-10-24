@@ -2,7 +2,7 @@
 /dist
 /node_modules
 /build
-
+/MovieName.js
 # Logs
 logs
 *.log
