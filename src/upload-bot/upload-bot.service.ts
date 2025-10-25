@@ -279,12 +279,12 @@ export class UploadBotService implements OnModuleInit {
               // include hyphen also
               const Filename =
                 '@LordFourthAnimeTamil' + file.file_name.slice(firstSepIndex); // keep the hyphen
-              fileName = Filename.replace(/_/g, ' ');
+              AnimefileName = Filename.replace(/_/g, ' ');
             } else {
-              fileName = file.file_name.replace(/_/g, ' ');
+              AnimefileName = file.file_name.replace(/_/g, ' ');
             }
           } else {
-            fileName = file.file_name.replace(/_/g, ' ');
+            AnimefileName = file.file_name.replace(/_/g, ' ');
           }
 
           console.log(AnimefileName);
