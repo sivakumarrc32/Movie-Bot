@@ -245,8 +245,9 @@ export class UploadBotService implements OnModuleInit {
         let AnimefileName;
         if (session.data.type === 'mepisode' || session.data.type === 'movie') {
           if (file.file_name?.startsWith('@')) {
-            const spaceIdx = file.file_name.indexOf(' ');
-            const hyphenIdx = file.file_name.indexOf('-');
+            const rename = file.file_name.replace(/_/g, ' ');
+            const spaceIdx = rename.indexOf(' ');
+            const hyphenIdx = rename.indexOf('-');
             const indices = [spaceIdx, hyphenIdx].filter((i) => i !== -1);
             const firstSepIndex =
               indices.length > 0 ? Math.min(...indices) : -1;
@@ -271,8 +272,9 @@ export class UploadBotService implements OnModuleInit {
           session.data.type === 'aepisode'
         ) {
           if (file.file_name?.startsWith('@')) {
-            const spaceIdx = file.file_name.indexOf(' ');
-            const hyphenIdx = file.file_name.indexOf('-');
+            const rename = file.file_name.replace(/_/g, ' ');
+            const spaceIdx = rename.indexOf(' ');
+            const hyphenIdx = rename.indexOf('-');
             const indices = [spaceIdx, hyphenIdx].filter((i) => i !== -1);
             const firstSepIndex =
               indices.length > 0 ? Math.min(...indices) : -1;
