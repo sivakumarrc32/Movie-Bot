@@ -687,7 +687,7 @@ export class MovieBotService implements OnModuleInit {
 
     files.forEach((file, idx) => {
       const fileName = file.fileName
-        .replace(/^@[^-_]+[_]*\s*/, '') // remove @BotName prefixes with - or _
+        .replace(/^@[^-_:]+[-_:]+[_]*\s*/, '') // remove @BotName prefixes with - or _
         .replace(/\.mkv$/i, '');
       const fileSize = file.size || '';
       buttons.push([
