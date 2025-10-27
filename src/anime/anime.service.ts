@@ -39,7 +39,7 @@ export class AnimeService implements OnModuleInit {
     return true;
   }
 
-  private channels = ['@LordFourthMovieTamil', '@LordFourthAnimeTamil']; // 🔴 unga rendu channel usernames
+  private channels = ['@MovieListTamilLordFourth', '@LordFourthAnimeTamil']; // 🔴 unga rendu channel usernames
 
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
@@ -61,7 +61,7 @@ export class AnimeService implements OnModuleInit {
                   [
                     {
                       text: '📢 Join Channel 1',
-                      url: 'https://t.me/LordFourthMovieTamil',
+                      url: 'https://t.me/MovieListTamilLordFourth',
                     },
                     {
                       text: '📢 Join Channel 2',

@@ -41,7 +41,7 @@ export class MovieBotService implements OnModuleInit {
     return true;
   }
 
-  private channels = ['@LordFourthMovieTamil', '@LordFourthAnimeTamil']; // 🔴 unga rendu channel usernames
+  private channels = ['@LordFourthMovieTamil', '@MovieListTamilLordFourth']; // 🔴 unga rendu channel usernames
 
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
@@ -68,7 +68,7 @@ export class MovieBotService implements OnModuleInit {
                     },
                     {
                       text: '📢 Join Channel 2',
-                      url: 'https://t.me/LordFourthAnimeTamil',
+                      url: 'https://t.me/MovieListTamilLordFourth',
                     },
                   ],
                   [{ text: 'Try Again', callback_data: 'check_join' }],
