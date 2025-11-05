@@ -505,7 +505,7 @@ export class UploadBotService implements OnModuleInit {
                               url: `https://t.me/lord_fourth_movie_bot?start=${payload}`,
                             },
                             {
-                              text: 'Movie Bot',
+                              text: 'Movie Request Bot',
                               url: 'https://t.me/lord_fourth_movie_bot',
                             },
                           ],
@@ -539,7 +539,7 @@ export class UploadBotService implements OnModuleInit {
                               url: `https://t.me/lord_fourth_anime_bot?start=${payload}`,
                             },
                             {
-                              text: 'Anime Bot',
+                              text: 'Anime Request Bot',
                               url: 'https://t.me/lord_fourth_anime_bot',
                             },
                           ],
