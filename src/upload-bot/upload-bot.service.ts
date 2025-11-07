@@ -71,6 +71,7 @@ export class UploadBotService implements OnModuleInit {
         if (!this.checkOwner(ctx)) return;
         await ctx.reply('Adding movie names to the channel...');
         await exportMovieNamesToTelegram();
+        await ctx.reply('✅ Movie names added to the channel!');
       } catch (err) {
         console.error('Add movie to channel error:', err.message);
       }
