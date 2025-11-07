@@ -12,7 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import { MovieBotService } from 'src/movie-bot/movie-bot.service';
 import { Anime } from 'src/anime/anime.schema';
 import { AnimeService } from 'src/anime/anime.service';
-import exportMovieNamesToTelegram from '../../MovieName';
+import { exportMovieNamesToTelegram } from '../../MovieName';
 
 interface SessionData {
   step: string;
