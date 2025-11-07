@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import { MovieBotService } from 'src/movie-bot/movie-bot.service';
 import { Anime } from 'src/anime/anime.schema';
 import { AnimeService } from 'src/anime/anime.service';
+import exportMovieNamesToTelegram from '../../MovieName';
 
 interface SessionData {
   step: string;
@@ -62,6 +63,15 @@ export class UploadBotService implements OnModuleInit {
         await ctx.reply(`Welcome to the upload bot 🎬`);
       } catch (err) {
         console.error('Start error:', err.message);
+      }
+    });
+
+    this.bot.command('addMovieToChannel', async (ctx) => {
+      try {
+        if (!this.checkOwner(ctx)) return;
+        await exportMovieNamesToTelegram();
+      } catch (err) {
+        console.error('Add movie to channel error:', err.message);
       }
     });
 
