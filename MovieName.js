@@ -32,8 +32,7 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
-
-export async function exportMovieNamesToTelegram() {
+async function exportMovieNamesToTelegram() {
   try {
     await mongoose.connect(process.env.MONGO_URI);
     console.log('✅ MongoDB connected');
@@ -130,3 +129,5 @@ export async function exportMovieNamesToTelegram() {
     console.log('🔌 MongoDB disconnected');
   }
 }
+
+exportMovieNamesToTelegram();
