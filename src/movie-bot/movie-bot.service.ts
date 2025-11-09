@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -88,6 +89,11 @@ export class MovieBotService implements OnModuleInit {
   onModuleInit() {
     // this.bot.start((ctx) => this.start(ctx));
     this.bot.start(async (ctx) => {
+      try{
+        await this.reactMessage(ctx);
+      }catch(e){
+        console.log(e);
+      }
       let payload =
         ctx.payload || ctx.message?.text?.split(' ').slice(1).join(' ');
 
@@ -744,6 +750,38 @@ export class MovieBotService implements OnModuleInit {
         chatId: ctx.chat.id,
         expireAt: new Date(Date.now() + 5 * 60 * 1000),
       });
+    }
+  }
+
+  async reactMessage(ctx) {
+    try {
+      const chatId = ctx.chat.id;
+      const messageId = ctx.message.message_id;
+      const emojis = [
+        '❤️', '👍', '👎', '🔥', '😂', '🥰', '😍', '😢', '😭', '😡',
+        '🤯', '😱', '🤔', '🤫', '😏', '😎', '👏', '💪', '🤩', '🥳',
+        '🎉', '💯', '🤗', '🙏', '😬', '🙄', '🤤', '🥹', '😴', '🤪',
+        '🤮', '🤢', '🤓', '🤡', '🤠', '👻', '👽', '💀', '🫡', '😇',
+        '🤖', '🐱', '🐶', '🐼', '🐻', '🐸', '🌹', '🌈', '⭐️', '⚡️',
+        '💥', '🫶', '🫰', '✌️', '🤞', '👋', '👊', '🤙', '🖐️', '👌',
+        '💋', '🍀', '☀️', '🌙', '🔥', '💧', '🌊', '🎈', '🎂', '🍕',
+        '🍿', '🍩', '🥂', '🍻', '🚀', '💎', '🧠', '🫀', '🩷', '🖤',
+        '💚', '💙', '💛', '🤍', '🩵', '🩶'
+      ];
+      
+      
+      const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+      await ctx.telegram.setMessageReaction(
+        chatId,
+        messageId,
+        [{ type: 'emoji', emoji: randomEmoji }],
+        { is_big: true },
+      );
+
+      console.log(`Reacted with ${randomEmoji} to message ${messageId}`);
+    } catch (err) {
+      console.error('Error reacting:', err);
     }
   }
 }
