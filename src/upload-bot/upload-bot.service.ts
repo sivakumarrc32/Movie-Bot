@@ -485,23 +485,25 @@ export class UploadBotService implements OnModuleInit {
               const payload = Buffer.from(
                 session.data.name || session.data.epiname,
               ).toString('base64');
-
-              const captionYear =
-                session.data.caption.match(/Year\s*:\s*(\d{4})/);
-              const year = captionYear ? parseInt(captionYear[1]) : 0;
-
-              const captionQualityMatch =
-                session.data.caption.match(/Quality\s*:\s*(.+)/);
-              const captionQuality = captionQualityMatch
-                ? captionQualityMatch[1].trim()
-                : '';
-
               let titleText = session.data.name || session.data.epiname || '';
-              if (year) {
-                titleText += ` (${year})`;
-              }
-              if (captionQuality) {
-                titleText += ` ${captionQuality}`;
+
+              if (session.data.type === 'movie') {
+                const captionYear =
+                  session.data.caption.match(/Year\s*:\s*(\d{4})/);
+                const year = captionYear ? parseInt(captionYear[1]) : 0;
+
+                const captionQualityMatch =
+                  session.data.caption.match(/Quality\s*:\s*(.+)/);
+                const captionQuality = captionQualityMatch
+                  ? captionQualityMatch[1].trim()
+                  : '';
+
+                if (year) {
+                  titleText += ` (${year})`;
+                }
+                if (captionQuality) {
+                  titleText += ` ${captionQuality}`;
+                }
               }
 
               const messageText = `<blockquote><i><b>${titleText}</b></i></blockquote>\n\nMovie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie_bot?start=${payload}'>Click Here And Get Direct File</a>\n\n<i><b>Note :</b>Direct File than Varum (No LinkShortner like gplink or Something)</i>`;
