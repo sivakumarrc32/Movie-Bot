@@ -167,7 +167,7 @@ export class MovieBotService implements OnModuleInit {
               [
                 {
                   text: 'Movie Bot',
-                  url: 'https://t.me/lord_fourth_movie_bot',
+                  url: 'https://t.me/lord_fourth_movie1_bot',
                 },
                 {
                   text: 'Anime Bot',
@@ -486,7 +486,7 @@ export class MovieBotService implements OnModuleInit {
 
     try {
       const msg = await ctx.editMessageCaption(
-        `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_movie_bot">Movie Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
+        `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_movie1_bot">Movie Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
         {
           parse_mode: 'HTML',
           reply_markup: {
