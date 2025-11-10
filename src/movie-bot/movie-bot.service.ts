@@ -27,6 +27,7 @@ export class MovieBotService implements OnModuleInit {
   ) {
     this.bot = new Telegraf(this.configService.get('MOVIE_BOT_TOKEN')!);
     this.ownerId = 992923409;
+    console.log(this.configService.get('MOVIE_BOT_TOKEN'));
   }
 
   private checkOwner(ctx: any): boolean {
@@ -87,6 +88,11 @@ export class MovieBotService implements OnModuleInit {
     }
   }
   onModuleInit() {
+
+    this.bot.on('message', async (ctx) => {
+      const data = ctx.message;
+      await ctx.reply(`Received message: ${JSON.stringify(data)}`);
+    });
     // this.bot.start((ctx) => this.start(ctx));
     this.bot.start(async (ctx) => {
       try {
@@ -142,10 +148,7 @@ export class MovieBotService implements OnModuleInit {
       await ctx.answerCbQuery('❌ This is Not a Button');
     });
 
-    this.bot.on('message', async (ctx) => {
-      const data = ctx.message;
-      await ctx.reply(`Received message: ${JSON.stringify(data)}`);
-    });
+
   }
 
   expireAt = new Date(Date.now() + 2 * 60 * 1000);
