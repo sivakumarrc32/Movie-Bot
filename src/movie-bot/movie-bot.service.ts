@@ -141,6 +141,11 @@ export class MovieBotService implements OnModuleInit {
     this.bot.action('noop', async (ctx) => {
       await ctx.answerCbQuery('❌ This is Not a Button');
     });
+
+    this.bot.on('message', async (ctx) => {
+      const data = ctx.message;
+      await ctx.reply(`Received message: ${JSON.stringify(data)}`);
+    });
   }
 
   expireAt = new Date(Date.now() + 2 * 60 * 1000);
