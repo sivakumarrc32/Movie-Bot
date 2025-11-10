@@ -286,12 +286,14 @@ export class MovieBotService implements OnModuleInit {
     const anime = await ctx.replyWithAnimation(
       'AAMCBQADGQEAAx5pEjNb5hQ6h9jcrafzPWYXCT2ypAACNBwAAmESkFQoGhPsIIj5qQEAB20AAzYE',
     );
-
+    console.log('Checking 1')
     try {
       const name = ctx.message.text.trim();
       const movie = await this.movieModel.findOne({
         name: { $regex: name, $options: 'i' },
       });
+
+      console.log('Checking 2', movie)
 
       if (!movie) {
         await ctx.deleteMessage(anime.message_id);
