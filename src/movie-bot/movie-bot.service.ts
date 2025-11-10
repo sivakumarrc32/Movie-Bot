@@ -283,7 +283,7 @@ export class MovieBotService implements OnModuleInit {
   async sendMovie(ctx) {
     if (ctx.message.text.startsWith('/')) return;
 
-    const anime = await ctx.replyWithPhoto(
+    const anime = await ctx.replyWithAnimation(
       'AAMCBQADGQEAAx5pEjNb5hQ6h9jcrafzPWYXCT2ypAACNBwAAmESkFQoGhPsIIj5qQEAB20AAzYE',
     );
 
@@ -372,7 +372,7 @@ export class MovieBotService implements OnModuleInit {
   }
 
   async sendMovieName(ctx, name: string) {
-    const anime = await ctx.replyWithPhoto(
+    const anime = await ctx.replyWithAnimation(
       'AAMCBQADGQEAAx5pEjNb5hQ6h9jcrafzPWYXCT2ypAACNBwAAmESkFQoGhPsIIj5qQEAB20AAzYE',
     );
 
