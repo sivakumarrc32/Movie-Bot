@@ -32,7 +32,7 @@ export class MovieBotService implements OnModuleInit {
   private checkOwner(ctx: any): boolean {
     if (ctx.from.id !== this.ownerId) {
       ctx.reply(
-        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie_bot Here You Can Get the Movies',
+        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie1_bot Here You Can Get the Movies',
         {
           parse_mode: 'HTML',
         },

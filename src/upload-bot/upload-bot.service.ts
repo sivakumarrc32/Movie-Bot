@@ -46,7 +46,7 @@ export class UploadBotService implements OnModuleInit {
   private checkOwner(ctx: any): boolean {
     if (!this.ownerId.includes(ctx.from.id)) {
       ctx.reply(
-        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie_bot Here You Can Get the Movies',
+        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie1_bot Here You Can Get the Movies',
         {
           parse_mode: 'HTML',
         },
@@ -307,7 +307,7 @@ export class UploadBotService implements OnModuleInit {
         if (session.data.type === 'movie') {
           const sent = await this.safeSend(() =>
             ctx.telegram.sendDocument(targetChannel, file.file_id, {
-              caption: `${fileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie_bot`,
+              caption: `${fileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie1_bot`,
             }),
           );
 
@@ -323,7 +323,7 @@ export class UploadBotService implements OnModuleInit {
         } else if (session.data.type === 'anime') {
           const sent = await this.safeSend(() =>
             ctx.telegram.sendDocument(targetChannel, file.file_id, {
-              caption: `${AnimefileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie_bot`,
+              caption: `${AnimefileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie1_bot`,
             }),
           );
 
@@ -339,7 +339,7 @@ export class UploadBotService implements OnModuleInit {
         } else if (session.data.type === 'mepisode') {
           const sent = await this.safeSend(() =>
             ctx.telegram.sendDocument(epiTargetChannel, file.file_id, {
-              caption: `${fileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie_bot`,
+              caption: `${fileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie1_bot`,
             }),
           );
 
@@ -355,7 +355,7 @@ export class UploadBotService implements OnModuleInit {
         } else if (session.data.type === 'aepisode') {
           const sent = await this.safeSend(() =>
             ctx.telegram.sendDocument(epiTargetChannel, file.file_id, {
-              caption: `${AnimefileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie_bot`,
+              caption: `${AnimefileName} \n\n Join Channel: https://t.me/LordFourthMovieTamil \n\n Start Bot : @lord_fourth_movie1_bot`,
             }),
           );
 
@@ -405,7 +405,7 @@ export class UploadBotService implements OnModuleInit {
                 // await this.movieBotService.sendBroadcast(
                 //   `✨ <i><b>${movieEpisode.name} ${session.data.epiNumber}</b></i> Movie Episode or Season Added! ✨\n\n` +
                 //     `👉 Type the <b>Movie Name</b> and get the file instantly.\n\n` +
-                //     `Join the Bot For Anime : @lord_fourth_movie_bot` +
+                //     `Join the Bot For Anime : @lord_fourth_movie1_bot` +
                 //     `🍿 Enjoy Watching!\n\n` +
                 //     `📢 Join Channel: <a href="https://t.me/+A0jFSzfeC-Y0ZmI1">Lord Fourth Movies Tamil</a> \n\n` +
                 //     `📢 Join Channel: <a href="https://t.me/Cinemxtic_Univerz">CINEMATIC UNIVERSE!</a> \n\n`,
