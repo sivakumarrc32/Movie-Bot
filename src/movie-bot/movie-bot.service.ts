@@ -55,8 +55,8 @@ export class MovieBotService implements OnModuleInit {
 
         if (chatMember.status === 'left') {
           console.log('User is not a member of the channel');
-          await ctx.replyWithPhoto(
-            'AgACAgUAAxkBAAMcaRIyOUaMxJ7v_58DY1oFiFVONl4AAlsNaxthEpBUGBoupaRzsQ0BAAMCAANzAAM2BA',
+          await ctx.replyWithAnimation(
+            'CgACAgUAAxkBAANyaRKmhERuDJk0tigZ_xPPst9DO44AAlAZAAJhEphUNzvZHREM',
             {
               caption:
                 '<b>🚫 To use this bot, you must join all our channels first.</b>',
@@ -90,10 +90,10 @@ export class MovieBotService implements OnModuleInit {
   }
   onModuleInit() {
 
-    // this.bot.on('message', async (ctx) => {
-    //   const data = ctx.message;
-    //   await ctx.reply(`Received message: ${JSON.stringify(data)}`);
-    // });
+    this.bot.on('message', async (ctx) => {
+      const data = ctx.message;
+      await ctx.reply(`Received message: ${JSON.stringify(data)}`);
+    });
     // this.bot.start((ctx) => this.start(ctx));
     this.bot.start(async (ctx) => {
       try {
