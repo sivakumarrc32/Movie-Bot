@@ -90,10 +90,10 @@ export class MovieBotService implements OnModuleInit {
   }
   onModuleInit() {
 
-    this.bot.on('message', async (ctx) => {
-      const data = ctx.message;
-      await ctx.reply(`Received message: ${JSON.stringify(data)}`);
-    });
+    // this.bot.on('message', async (ctx) => {
+    //   const data = ctx.message;
+    //   await ctx.reply(`Received message: ${JSON.stringify(data)}`);
+    // });
     // this.bot.start((ctx) => this.start(ctx));
     this.bot.start(async (ctx) => {
       try {
@@ -166,7 +166,7 @@ export class MovieBotService implements OnModuleInit {
       if (!isJoined) return;
       const userName = ctx.from.username;
       const msg = await ctx.replyWithAnimation(
-        'CgACAgUAAxkBAANyaRKmhERuDJk0tigZ_xPPst9DO44AAlAZAAJhEphUNzvZHREM', // Local file
+        'AAMCBQADGQEAA3xpErA7ckACZqvZEnjeDNnWZ0XWPgACbhkAAmESmFQeYSsIMX2kbgEAB20AAzYE', // Local file
         {
           caption: `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<i>I'm your friendly Movie Bot 🤖</i>\n\n<b>Here, you can get movie files directly</b> — no link shorteners, no ads, just pure movies! 🍿\n\n👉 <b>Send the correct movie name</b>, and if it’s available in my database, you’ll get the <b>file instantly!</b>\n\n⚡<i>Enjoy your movie time! 🎥💫</i>`,
           parse_mode: 'HTML',
