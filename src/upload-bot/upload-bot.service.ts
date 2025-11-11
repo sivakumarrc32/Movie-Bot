@@ -506,6 +506,10 @@ export class UploadBotService implements OnModuleInit {
                 }
               }
 
+              if (session.data.type === 'mepisode') {
+                titleText = session.data.episodeNumber || '';
+              }
+
               const messageText = `<blockquote><i><b>${titleText}</b></i></blockquote>\n\nMovie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_movie2_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie2_bot?start=${payload}'>Click Here And Get Direct File</a>\n\n<i><b>Note :</b>Direct File than Varum (No LinkShortner like gplink or Something)</i>`;
 
               await this.safeSend(() =>
