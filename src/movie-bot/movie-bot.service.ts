@@ -43,7 +43,7 @@ export class MovieBotService implements OnModuleInit {
     return true;
   }
 
-  private channels = ['-1002703034966', '-1003261050452']; // 🔴 unga rendu channel usernames
+  private channels = ['-1002703034966', '-1002154770258']; // 🔴 unga rendu channel usernames
 
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
@@ -67,7 +67,7 @@ export class MovieBotService implements OnModuleInit {
                   [
                     {
                       text: '📢 Join Channel 1',
-                      url: 'https://t.me/+fDEgN_6lXUQxMzVl',
+                      url: 'https://t.me/+Uj44TnLxrooyNGI1',
                     },
                     {
                       text: '📢 Join Channel 2',
