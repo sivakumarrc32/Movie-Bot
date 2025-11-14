@@ -56,7 +56,7 @@ export class MovieBotService implements OnModuleInit {
         if (chatMember.status === 'left') {
           console.log('User is not a member of the channel');
           await ctx.replyWithAnimation(
-            'CgACAgUAAxkBAANyaRKmhERuDJk0tigZ_xPPst9DO44AAlAZAAJhEphUNzvZHREM',
+            'CgACAgUAAxkBAAN_aRKz1Mgu0UTZz66VBZ4j46WArHQAAngZAAJhEphUUbEWPNAMkjg2BA',
             {
               caption:
                 '<b>🚫 To use this bot, you must join all our channels first.</b>',
