@@ -165,7 +165,7 @@ export class AnimeService implements OnModuleInit {
                 },
                 {
                   text: 'Movie Bot',
-                  url: 'https://t.me/lord_fourth_movie_bot',
+                  url: 'https://t.me/lord_fourth_movie3_bot',
                 },
               ],
               [
