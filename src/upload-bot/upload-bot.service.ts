@@ -510,7 +510,7 @@ export class UploadBotService implements OnModuleInit {
                 titleText += `${session.data.epiNumber}` || '';
               }
 
-              const messageText = `<blockquote><i><b>${titleText}</b></i></blockquote>\n\nMovie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_movie2_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie2_bot?start=${payload}'>Click Here And Get Direct File</a>\n\n<i><b>Note :</b>Direct File than Varum (No LinkShortner like gplink or Something)</i>`;
+              const messageText = `<blockquote><i><b>${titleText}</b></i></blockquote>\n\nMovie/Episode Uploaded Successfully!\n\n<b>All Quality Upload Completed Click Here 👇🏻</b> \n\n<a href= 'https://t.me/lord_fourth_movie3_bot?start=${payload}'>Click Here And Get Direct File</a>\n<a href= 'https://t.me/lord_fourth_movie2_bot?start=${payload}'>Click Here And Get Direct File</a>\n\n<i><b>Note :</b>Direct File than Varum (No LinkShortner like gplink or Something)</i>`;
 
               await this.safeSend(() =>
                 ctx.telegram.sendMessage(mainChannelId, messageText, {
