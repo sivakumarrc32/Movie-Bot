@@ -539,12 +539,18 @@ export class UploadBotService implements OnModuleInit {
     });
   }
 
+  private async wait(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   private async safeSend<T>(
     fn: () => Promise<T>,
     attempt = 0,
   ): Promise<T | null> {
     try {
-      return await fn();
+      const res = await fn();
+      await this.wait(1000);
+      return res;
     } catch (err: any) {
       if (err.response?.error_code === 429) {
         const retryAfter = err.response.parameters.retry_after || 5;
