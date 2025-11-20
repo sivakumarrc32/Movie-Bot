@@ -148,7 +148,6 @@ export class MovieBotService implements OnModuleInit {
     this.bot.action('noop', async (ctx) => {
       await ctx.answerCbQuery('❌ This is Not a Button');
     });
-    // this.bot.launch();
 
   }
 

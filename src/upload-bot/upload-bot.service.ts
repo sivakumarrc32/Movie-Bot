@@ -11,7 +11,6 @@ import { Movie } from '../movie-bot/movie.schema';
 import { ConfigService } from '@nestjs/config';
 import { MovieBotService } from 'src/movie-bot/movie-bot.service';
 import { Anime } from 'src/anime/anime.schema';
-import { AnimeService } from 'src/anime/anime.service';
 
 interface SessionData {
   step: string;
@@ -32,8 +31,8 @@ export class UploadBotService implements OnModuleInit {
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
     @InjectModel(Anime.name) private animeModel: Model<Anime>,
     private configService: ConfigService,
-    private movieBotService: MovieBotService,
-    private animeBotService: AnimeService,
+    // private movieBotService: MovieBotService,
+    // private animeBotService: AnimeService,
   ) {
     this.bot = new Telegraf(this.configService.get('UPLOAD_BOT_TOKEN')!);
     this.channelId = '-1002931727367';
