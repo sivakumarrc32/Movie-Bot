@@ -3,11 +3,9 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UploadBotService } from './upload-bot.service';
 import { Movie, MovieSchema } from '../movie-bot/movie.schema';
 import { UploadBotController } from './upload-bot.controller';
-import { MovieBotService } from 'src/movie-bot/movie-bot.service';
 import { User, UserSchema } from 'src/movie-bot/user.schema';
 import { TempMessage, TempMessageSchema } from 'src/movie-bot/temp.schema';
 import { Anime, AnimeSchema } from 'src/anime/anime.schema';
-import { AnimeService } from 'src/anime/anime.service';
 import { AnimeUser, AnimeUserSchema } from 'src/anime/anime.user.schema';
 
 @Module({
@@ -20,7 +18,7 @@ import { AnimeUser, AnimeUserSchema } from 'src/anime/anime.user.schema';
       { name: AnimeUser.name, schema: AnimeUserSchema },
     ]),
   ],
-  providers: [UploadBotService, MovieBotService, AnimeService],
+  providers: [UploadBotService],
   controllers: [UploadBotController],
 })
 export class UploadBotModule {}
