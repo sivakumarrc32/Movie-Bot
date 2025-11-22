@@ -141,15 +141,31 @@ export class UploadBotService implements OnModuleInit {
           console.log(answer);
           if (answer === 'yes' || answer === 'y') {
             session.data.broadcastMain = true;
-            session.step = ['movie', 'anime'].includes(session.data.type)
-              ? 'expectedFiles'
-              : 'expectedEpiFiles';
+            if (
+              session.data.type === 'movie' ||
+              session.data.type === 'anime'
+            ) {
+              session.step = 'expectedFiles';
+            } else if (
+              session.data.type === 'mepisode' ||
+              session.data.type === 'aepisode'
+            ) {
+              session.step = 'expectedEpiFiles';
+            }
             return ctx.reply(` 📊 How many files to upload? (Enter number)`);
           } else if (answer === 'no' || answer === 'n') {
             session.data.broadcastMain = false;
-            session.step = ['movie', 'anime'].includes(session.data.type)
-              ? 'expectedFiles'
-              : 'expectedEpiFiles';
+            if (
+              session.data.type === 'movie' ||
+              session.data.type === 'anime'
+            ) {
+              session.step = 'expectedFiles';
+            } else if (
+              session.data.type === 'mepisode' ||
+              session.data.type === 'aepisode'
+            ) {
+              session.step = 'expectedEpiFiles';
+            }
             return ctx.reply(` 📊  How many files to upload? (Enter number)`);
           } else {
             await ctx.reply(
