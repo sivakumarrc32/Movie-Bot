@@ -176,7 +176,9 @@ export class UploadBotService implements OnModuleInit {
           }
         }
         if (session.step === 'expectedFiles') {
+          console.log(ctx.message.text);
           session.data.expectedFiles = parseInt(ctx.message.text, 10);
+          console.log(session.data.expectedFiles);
           session.data.files = [];
           session.step = 'files';
           return ctx.reply(`📂 Now send ${session.data.expectedFiles} files:`);
