@@ -176,7 +176,7 @@ export class AnimeService implements OnModuleInit {
                 { text: '👨‍💻 About', callback_data: 'about' },
                 {
                   text: '⚙️ Support',
-                  url: 'https://t.me/Feedback_LordFourth_Bot?start=_tgr_W-HlEd45Yzll',
+                  url: 'https://t.me/+JH-KR5ZMJUQyNzI1',
                 },
               ],
               [{ text: 'Developer', url: 'https://t.me/Lord_Fourth04' }],
