@@ -33,7 +33,7 @@ export class MovieBotService implements OnModuleInit {
   private checkOwner(ctx: any): boolean {
     if (ctx.from.id !== this.ownerId) {
       ctx.reply(
-        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie3_bot Here You Can Get the Movies',
+        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie4_bot Here You Can Get the Movies',
         {
           parse_mode: 'HTML',
         },
@@ -175,7 +175,7 @@ export class MovieBotService implements OnModuleInit {
               [
                 {
                   text: 'Movie Bot',
-                  url: 'https://t.me/lord_fourth_movie3_bot',
+                  url: 'https://t.me/lord_fourth_movie4_bot',
                 },
                 {
                   text: 'Anime Bot',
@@ -496,7 +496,7 @@ export class MovieBotService implements OnModuleInit {
 
     try {
       const msg = await ctx.editMessageCaption(
-        `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_movie3_bot">Movie Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
+        `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_movie4_bot">Movie Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
         {
           parse_mode: 'HTML',
           reply_markup: {
