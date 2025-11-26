@@ -165,7 +165,7 @@ export class MovieBotService implements OnModuleInit {
       if (!isJoined) return;
       const userName = ctx.from.username;
       const msg = await ctx.replyWithAnimation(
-        'CgACAgUAAxkBAAMFaRjJk008ddUBUlyDGa0m0dSK0WgAAugXAALwcclUXeWhnffIqJE2BA', // Local file
+        'CgACAgUAAxkBAAMEaSc7sl_HspHbtUAMgI-gBxVSA3gAAkUcAAKN_zlVrQWNMaQPGJA2BA', // Local file
         {
           caption: `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<i>I'm your friendly Movie Bot 🤖</i>\n\n<b>Here, you can get movie files directly</b> — no link shorteners, no ads, just pure movies! 🍿\n\n👉 <b>Send the correct movie name</b>, and if it’s available in my database, you’ll get the <b>file instantly!</b>\n\n⚡<i>Enjoy your movie time! 🎥💫</i>`,
           parse_mode: 'HTML',
@@ -284,7 +284,7 @@ export class MovieBotService implements OnModuleInit {
     if (ctx.message.text.startsWith('/')) return;
 
     const anime = await ctx.replyWithAnimation(
-      'CAACAgUAAxkBAAMEaRjJNoJoZhCcZByyolSKAZMiBFkAAucXAALwcclUAungg7o2hXU2BA',
+      'CAACAgUAAxkBAAMFaSc8IasIRuuXn1VeS6izQIULISAAAkYcAAKN_zlVtkSzXMfczYQ2BA',
     );
     console.log('Checking 1')
     try {
@@ -375,7 +375,7 @@ export class MovieBotService implements OnModuleInit {
 
   async sendMovieName(ctx, name: string) {
     const anime = await ctx.replyWithAnimation(
-      'CAACAgUAAxkBAAMEaRjJNoJoZhCcZByyolSKAZMiBFkAAucXAALwcclUAungg7o2hXU2BA',
+      'CAACAgUAAxkBAAMFaSc8IasIRuuXn1VeS6izQIULISAAAkYcAAKN_zlVtkSzXMfczYQ2BA',
     );
 
     try {
