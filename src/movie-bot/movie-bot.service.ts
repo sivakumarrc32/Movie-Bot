@@ -616,7 +616,7 @@ export class MovieBotService implements OnModuleInit {
         if (!movie) return ctx.reply('❌ Movie not found.');
 
         for (const file of movie.files) {
-          const message = await ctx.telegram.forwardMessage(
+          const message = await ctx.telegram.copymessage(
             ctx.chat.id,
             file.chatId,
             file.messageId,
