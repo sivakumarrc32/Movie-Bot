@@ -56,7 +56,7 @@ export class MovieBotService implements OnModuleInit {
         if (chatMember.status === 'left') {
           console.log('User is not a member of the channel');
           await ctx.replyWithAnimation(
-            'CgACAgUAAxkBAAMQaTcNRpUkliHOm7KpsLRgMQhKeVEAAmUZAALK8rlVPOYyGPVA3_02BA',
+            'CgACAgUAAxkBAAMaaTcPME2k0MGOdKyHpwEProcoi_8AAmYZAALK8rlVtT1IxIOSGeo2BA',
             {
               caption:
                 '<b>🚫 To use this bot, you must join all our channels first.</b>',
@@ -165,7 +165,7 @@ export class MovieBotService implements OnModuleInit {
       if (!isJoined) return;
       const userName = ctx.from.username;
       const msg = await ctx.replyWithAnimation(
-        'CgACAgUAAxkBAAMQaTcNRpUkliHOm7KpsLRgMQhKeVEAAmUZAALK8rlVPOYyGPVA3_02BA', // Local file
+        'CgACAgUAAxkBAAMaaTcPME2k0MGOdKyHpwEProcoi_8AAmYZAALK8rlVtT1IxIOSGeo2BA', // Local file
         {
           caption: `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<i>I'm your friendly Movie Bot 🤖</i>\n\n<b>Here, you can get movie files directly</b> — no link shorteners, no ads, just pure movies! 🍿\n\n👉 <b>Send the correct movie name</b>, and if it’s available in my database, you’ll get the <b>file instantly!</b>\n\n⚡<i>Enjoy your movie time! 🎥💫</i>`,
           parse_mode: 'HTML',
