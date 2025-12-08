@@ -48,7 +48,7 @@ async function exportMovieNamesToTelegram() {
     const movieTexts = movies.map((movie, i) => {
       const encoded = Buffer.from(movie.name, 'utf-8').toString('base64');
       const safeName = escapeHtml(movie.name);
-      return `<b>${i + 1}. ${safeName} → <a href="https://t.me/lord_fourth_movie4_bot?start=${encoded}">Click Here</a></b>`;
+      return `<b>${i + 1}. ${safeName} → <a href="https://t.me/lord_fourth_movie5_bot?start=${encoded}">Click Here</a></b>`;
     });
 
     const chunkSize = 35;

@@ -33,7 +33,7 @@ export class MovieBotService implements OnModuleInit {
   private checkOwner(ctx: any): boolean {
     if (ctx.from.id !== this.ownerId) {
       ctx.reply(
-        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie4_bot Here You Can Get the Movies',
+        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_movie5_bot Here You Can Get the Movies',
         {
           parse_mode: 'HTML',
         },
@@ -56,7 +56,7 @@ export class MovieBotService implements OnModuleInit {
         if (chatMember.status === 'left') {
           console.log('User is not a member of the channel');
           await ctx.replyWithAnimation(
-            'CgACAgUAAxkBAAIKkmkzuz_j5zhJob7n4ddHt6MDfkQAA1UcAAInJKFVUw62xpHqjKE2BA',
+            'CgACAgUAAxkBAAMDaTcJDkbjELwV2Vw4Kuxpm3ZeEx4AAlUcAAInJKFVBQa5kaIXf6s2BA',
             {
               caption:
                 '<b>🚫 To use this bot, you must join all our channels first.</b>',
@@ -165,7 +165,7 @@ export class MovieBotService implements OnModuleInit {
       if (!isJoined) return;
       const userName = ctx.from.username;
       const msg = await ctx.replyWithAnimation(
-        'CgACAgUAAxkBAAMEaSc7sl_HspHbtUAMgI-gBxVSA3gAAkUcAAKN_zlVrQWNMaQPGJA2BA', // Local file
+        'CgACAgUAAxkBAAMDaTcJDkbjELwV2Vw4Kuxpm3ZeEx4AAlUcAAInJKFVBQa5kaIXf6s2BA', // Local file
         {
           caption: `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a> \n\n<i>I'm your friendly Movie Bot 🤖</i>\n\n<b>Here, you can get movie files directly</b> — no link shorteners, no ads, just pure movies! 🍿\n\n👉 <b>Send the correct movie name</b>, and if it’s available in my database, you’ll get the <b>file instantly!</b>\n\n⚡<i>Enjoy your movie time! 🎥💫</i>`,
           parse_mode: 'HTML',
@@ -175,7 +175,7 @@ export class MovieBotService implements OnModuleInit {
               [
                 {
                   text: 'Movie Bot',
-                  url: 'https://t.me/lord_fourth_movie4_bot',
+                  url: 'https://t.me/lord_fourth_movie5_bot',
                 },
                 {
                   text: 'Anime Bot',
@@ -496,7 +496,7 @@ export class MovieBotService implements OnModuleInit {
 
     try {
       const msg = await ctx.editMessageCaption(
-        `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_movie4_bot">Movie Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
+        `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_movie5_bot">Movie Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
         {
           parse_mode: 'HTML',
           reply_markup: {
