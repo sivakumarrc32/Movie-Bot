@@ -43,7 +43,7 @@ export class MovieBotService implements OnModuleInit {
     return true;
   }
 
-  private channels = ['-1002703034966', '-1003261050452']; // 🔴 unga rendu channel usernames
+  private channels = ['-1003233206043', '-1003261050452']; // 🔴 unga rendu channel usernames
 
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
@@ -71,7 +71,7 @@ export class MovieBotService implements OnModuleInit {
                     },
                     {
                       text: '📢 Join Channel 2',
-                      url: 'https://t.me/+yW7cm_12SRdlYTA9',
+                      url: 'https://t.me/LordFourthMovieTamil',
                     },
                   ],
                   [{ text: 'Try Again', callback_data: 'check_join' }],
