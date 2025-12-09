@@ -283,9 +283,9 @@ export class MovieBotService implements OnModuleInit {
   async sendMovie(ctx) {
     if (ctx.message.text.startsWith('/')) return;
 
-    const anime = await ctx.replyWithAnimation(
-      'CAACAgUAAxkBAAMFaSc8IasIRuuXn1VeS6izQIULISAAAkYcAAKN_zlVtkSzXMfczYQ2BA',
-    );
+    // const anime = await ctx.replyWithAnimation(
+    //   'CAACAgUAAxkBAAMFaSc8IasIRuuXn1VeS6izQIULISAAAkYcAAKN_zlVtkSzXMfczYQ2BA',
+    // );
     console.log('Checking 1')
     try {
       const name = ctx.message.text.trim();
@@ -296,7 +296,7 @@ export class MovieBotService implements OnModuleInit {
       console.log('Checking 2', movie)
 
       if (!movie) {
-        await ctx.deleteMessage(anime.message_id);
+        // await ctx.deleteMessage(anime.message_id);
         const msg = await ctx.reply(
           `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Movie is not Available in My Database.</b>\n\n<b>Movie Name Must be in Correct Format</b>\n\n<b><u>Examples for Typing</u></b>\n 1.(Web Series Name) S01 or (Web Series Name) S02 \n2. (Movie Name) \n3. (Web Series Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Movie Available in our bot Using <b> List of Movies</b> </i> \n\n <i>If the Movie is not in the List. Kindly Contact the Admin Using <b>Request Movie</b></i>`,
           {
@@ -355,7 +355,7 @@ export class MovieBotService implements OnModuleInit {
 
       await this.sendEpisodePage(ctx, movie, 0);
 
-      await ctx.deleteMessage(anime.message_id);
+      // await ctx.deleteMessage(anime.message_id);
 
       const expireAt = new Date(Date.now() + 5 * 60 * 1000);
 
