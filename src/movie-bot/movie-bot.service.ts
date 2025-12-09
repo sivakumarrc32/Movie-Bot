@@ -443,7 +443,7 @@ export class MovieBotService implements OnModuleInit {
 
       await this.sendEpisodePage(ctx, movie, 0);
 
-      await ctx.deleteMessage(anime.message_id);
+      // await ctx.deleteMessage(anime.message_id);
 
       const expireAt = new Date(Date.now() + 5 * 60 * 1000);
 
