@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const BOT_TOKEN = '8356350231:AAHu0NJetbTPhvWB8Qx_vUSotyqJO7B_PB8';
-const CHANNEL_ID = '-1002703034966';
+const CHANNEL_ID = '-1003389377874';
 
 const bot = new Telegraf(BOT_TOKEN);
 
