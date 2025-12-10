@@ -417,7 +417,7 @@ export class MovieBotService implements OnModuleInit {
 
       // Poster
       if (movie.poster?.chatId && movie.poster?.messageId) {
-        const posterMsg = await ctx.telegram.forwardMessage(
+        const posterMsg = await ctx.telegram.copyMessage(
           ctx.chat.id,
           movie.poster.chatId,
           movie.poster.messageId,
