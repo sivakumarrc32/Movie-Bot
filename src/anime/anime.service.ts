@@ -40,7 +40,7 @@ export class AnimeService implements OnModuleInit {
     return true;
   }
 
-  private channels = ['-1003261050452', '-1003624602414']; // 🔴 unga rendu channel usernames
+  private channels = ['-1003261050452', '-1003624602414','-1003233206043']; // 🔴 unga rendu channel usernames
 
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
@@ -67,6 +67,12 @@ export class AnimeService implements OnModuleInit {
                     {
                       text: '📢 Join Channel 2',
                       url: 'https://t.me/+uhgXU7hwvnk2YTRl',
+                    },
+                  ],
+                  [
+                    {
+                      text: 'Main Channel',
+                      url: 'https://t.me/+OnhJMqwc380zM2I1',
                     },
                   ],
                   [{ text: 'Try Again', callback_data: 'check_join' }],
