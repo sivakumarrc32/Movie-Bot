@@ -40,7 +40,7 @@ export class AnimeService implements OnModuleInit {
     return true;
   }
 
-  private channels = ['-1002703034966', '-1003261050452']; // 🔴 unga rendu channel usernames
+  private channels = ['-1003261050452', '-1003624602414']; // 🔴 unga rendu channel usernames
 
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
@@ -62,11 +62,11 @@ export class AnimeService implements OnModuleInit {
                   [
                     {
                       text: '📢 Join Channel 1',
-                      url: 'https://t.me/+yW7cm_12SRdlYTA9',
+                      url: 'https://t.me/LordFourthMovieTamil',
                     },
                     {
                       text: '📢 Join Channel 2',
-                      url: 'https://t.me/+fDEgN_6lXUQxMzVl',
+                      url: 'https://t.me/+uhgXU7hwvnk2YTRl',
                     },
                   ],
                   [{ text: 'Try Again', callback_data: 'check_join' }],
@@ -296,7 +296,7 @@ export class AnimeService implements OnModuleInit {
                 [
                   {
                     text: 'Request Anime',
-                    url: 'https://t.me/Feedback_LordFourth_Bot?start=_tgr_W-HlEd45Yzll',
+                    url: 'https://t.me/+JH-KR5ZMJUQyNzI1',
                   },
                   {
                     text: 'List of Animes',
@@ -388,7 +388,7 @@ export class AnimeService implements OnModuleInit {
                 [
                   {
                     text: 'Request Anime',
-                    url: 'https://t.me/Feedback_LordFourth_Bot?start=_tgr_W-HlEd45Yzll',
+                    url: 'https://t.me/+JH-KR5ZMJUQyNzI1',
                   },
                   {
                     text: 'List of Animes',
@@ -531,7 +531,7 @@ export class AnimeService implements OnModuleInit {
                 { text: '👨‍💻 About Bot', callback_data: 'about' },
                 {
                   text: '⚙️ Support',
-                  url: 'https://t.me/Feedback_LordFourth_Bot?start=_tgr_W-HlEd45Yzll',
+                  url: 'https://t.me/+JH-KR5ZMJUQyNzI1',
                 },
               ],
               [{ text: 'Developer', url: 'https://t.me/Lord_Fourth04' }],
