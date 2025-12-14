@@ -19,13 +19,11 @@ type ChannelInfo = {
   url: string;
 };
 
-
 @Injectable()
 export class MovieBotService implements OnModuleInit {
   public bot: Telegraf;
   public ownerId: number;
   private PAGE_SIZE = 10;
-  
 
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
@@ -72,25 +70,25 @@ export class MovieBotService implements OnModuleInit {
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
       const notJoinedChannels: ChannelInfo[] = [];
-  
+
       // 🔍 Check each channel
       for (const channel of this.channels) {
         const member = await ctx.telegram.getChatMember(
           channel.id,
           ctx.from.id,
         );
-  
+
         // ❌ Only if NOT joined
         if (member.status === 'left') {
           notJoinedChannels.push(channel);
         }
       }
-  
+
       // ✅ User joined all channels
       if (notJoinedChannels.length === 0) {
         return true;
       }
-  
+
       // 🎯 Split buttons
       const channel1And2 = notJoinedChannels
         .filter((ch) => ch.text !== 'Main Channel')
@@ -98,18 +96,18 @@ export class MovieBotService implements OnModuleInit {
           text: ch.text,
           url: ch.url,
         }));
-  
+
       const mainChannel = notJoinedChannels.find(
         (ch) => ch.text === 'Main Channel',
       );
-  
+
       const keyboard: any[] = [];
-  
+
       // 🔹 Channel 1 & 2 → same row
       if (channel1And2.length > 0) {
         keyboard.push(channel1And2);
       }
-  
+
       // 🔹 Main Channel → single row
       if (mainChannel) {
         keyboard.push([
@@ -119,34 +117,34 @@ export class MovieBotService implements OnModuleInit {
           },
         ]);
       }
-  
+
       // 🔹 Try Again → single row
-      keyboard.push([
-        { text: '🔄 Try Again', callback_data: 'check_join' },
-      ]);
-  
+      keyboard.push([{ text: '🔄 Try Again', callback_data: 'check_join' }]);
+
       await ctx.replyWithAnimation(
         'CgACAgUAAxkBAAMaaTcPME2k0MGOdKyHpwEProcoi_8AAmYZAALK8rlVtT1IxIOSGeo2BA',
         {
           caption:
-            '<b>🚫 To use this bot, you must join the remaining channels.</b>',
+            `Hi ${ctx.from.first_name},\n\n` +
+            `<b>Intha channel la join pannunga</b>\n\n` +
+            `Movies direct-ah channel-la post pannuvom.\n` +
+            `Updates miss pannaama irukka join pannunga.\n\n` +
+            `👇 Keela irukkura button click pannunga`,
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: keyboard,
           },
         },
       );
-  
+
       return false;
     } catch (err) {
       console.error('checkSubscription error:', err.message);
       return false;
     }
   }
-  
-  
-  onModuleInit() {
 
+  onModuleInit() {
     // this.bot.on('message', async (ctx) => {
     //   const data = ctx.message;
     //   await ctx.reply(`Received message: ${JSON.stringify(data)}`);
@@ -205,7 +203,6 @@ export class MovieBotService implements OnModuleInit {
     this.bot.action('noop', async (ctx) => {
       await ctx.answerCbQuery('❌ This is Not a Button');
     });
-
   }
 
   expireAt = new Date(Date.now() + 2 * 60 * 1000);
@@ -343,14 +340,14 @@ export class MovieBotService implements OnModuleInit {
     // const anime = await ctx.replyWithAnimation(
     //   'CAACAgUAAxkBAAMFaSc8IasIRuuXn1VeS6izQIULISAAAkYcAAKN_zlVtkSzXMfczYQ2BA',
     // );
-    console.log('Checking 1')
+    console.log('Checking 1');
     try {
       const name = ctx.message.text.trim();
       const movie = await this.movieModel.findOne({
         name: { $regex: name, $options: 'i' },
       });
 
-      console.log('Checking 2', movie)
+      console.log('Checking 2', movie);
 
       if (!movie) {
         // await ctx.deleteMessage(anime.message_id);
