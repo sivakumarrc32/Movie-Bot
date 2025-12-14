@@ -73,27 +73,57 @@ export class MovieBotService implements OnModuleInit {
     try {
       const notJoinedChannels: ChannelInfo[] = [];
   
+      // 🔍 Check each channel
       for (const channel of this.channels) {
-        const chatMember = await ctx.telegram.getChatMember(
+        const member = await ctx.telegram.getChatMember(
           channel.id,
           ctx.from.id,
         );
   
-        if (chatMember.status === 'left') {
+        // ❌ Only if NOT joined
+        if (member.status === 'left') {
           notJoinedChannels.push(channel);
         }
       }
   
-      // ✅ All channels joined
+      // ✅ User joined all channels
       if (notJoinedChannels.length === 0) {
         return true;
       }
   
-      // 🔘 Only show missing channel buttons
-      const joinButtons = notJoinedChannels.map((ch) => ({
-        text: ch.text,
-        url: ch.url,
-      }));
+      // 🎯 Split buttons
+      const channel1And2 = notJoinedChannels
+        .filter((ch) => ch.text !== 'Main Channel')
+        .map((ch) => ({
+          text: ch.text,
+          url: ch.url,
+        }));
+  
+      const mainChannel = notJoinedChannels.find(
+        (ch) => ch.text === 'Main Channel',
+      );
+  
+      const keyboard: any[] = [];
+  
+      // 🔹 Channel 1 & 2 → same row
+      if (channel1And2.length > 0) {
+        keyboard.push(channel1And2);
+      }
+  
+      // 🔹 Main Channel → single row
+      if (mainChannel) {
+        keyboard.push([
+          {
+            text: mainChannel.text,
+            url: mainChannel.url,
+          },
+        ]);
+      }
+  
+      // 🔹 Try Again → single row
+      keyboard.push([
+        { text: '🔄 Try Again', callback_data: 'check_join' },
+      ]);
   
       await ctx.replyWithAnimation(
         'CgACAgUAAxkBAAMaaTcPME2k0MGOdKyHpwEProcoi_8AAmYZAALK8rlVtT1IxIOSGeo2BA',
@@ -102,10 +132,7 @@ export class MovieBotService implements OnModuleInit {
             '<b>🚫 To use this bot, you must join the remaining channels.</b>',
           parse_mode: 'HTML',
           reply_markup: {
-            inline_keyboard: [
-              joinButtons,
-              [{ text: '🔄 Try Again', callback_data: 'check_join' }],
-            ],
+            inline_keyboard: keyboard,
           },
         },
       );
@@ -116,6 +143,7 @@ export class MovieBotService implements OnModuleInit {
       return false;
     }
   }
+  
   
   onModuleInit() {
 
