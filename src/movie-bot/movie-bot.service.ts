@@ -13,11 +13,19 @@ import { User } from './user.schema';
 import { TempMessage } from './temp.schema';
 // import { pay } from 'node_modules/telegraf/typings/button';
 
+type ChannelInfo = {
+  id: string;
+  text: string;
+  url: string;
+};
+
+
 @Injectable()
 export class MovieBotService implements OnModuleInit {
   public bot: Telegraf;
   public ownerId: number;
   private PAGE_SIZE = 10;
+  
 
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
@@ -43,56 +51,72 @@ export class MovieBotService implements OnModuleInit {
     return true;
   }
 
-  private channels = ['-1003261050452', '-1003624602414', '-1003233206043']; // 🔴 unga rendu channel usernames
+  private channels: ChannelInfo[] = [
+    {
+      id: '-1003261050452',
+      text: '📢 Join Channel 1',
+      url: 'https://t.me/LordFourthMovieTamil',
+    },
+    {
+      id: '-1003624602414',
+      text: '📢 Join Channel 2',
+      url: 'https://t.me/+uhgXU7hwvnk2YTRl',
+    },
+    {
+      id: '-1003233206043',
+      text: 'Main Channel',
+      url: 'https://t.me/+OnhJMqwc380zM2I1',
+    },
+  ]; // 🔴 unga rendu channel usernames
 
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
+      const notJoinedChannels: ChannelInfo[] = [];
+  
       for (const channel of this.channels) {
         const chatMember = await ctx.telegram.getChatMember(
-          channel,
+          channel.id,
           ctx.from.id,
         );
-
+  
         if (chatMember.status === 'left') {
-          console.log('User is not a member of the channel');
-          await ctx.replyWithAnimation(
-            'CgACAgUAAxkBAAMaaTcPME2k0MGOdKyHpwEProcoi_8AAmYZAALK8rlVtT1IxIOSGeo2BA',
-            {
-              caption:
-                '<b>🚫 To use this bot, you must join all our channels first.</b>',
-
-              parse_mode: 'HTML',
-              reply_markup: {
-                inline_keyboard: [
-                  [
-                    {
-                      text: '📢 Join Channel 1',
-                      url: 'https://t.me/LordFourthMovieTamil',
-                    },
-                    {
-                      text: '📢 Join Channel 2',
-                      url: 'https://t.me/+uhgXU7hwvnk2YTRl',
-                    },
-                  ],
-                  [
-                    {
-                      text: 'Main Channel',
-                      url: 'https://t.me/+OnhJMqwc380zM2I1',
-                  }],
-                  [{ text: 'Try Again', callback_data: 'check_join' }],
-                ],
-              },
-            },
-          );
-          return false;
+          notJoinedChannels.push(channel);
         }
       }
-      return true;
+  
+      // ✅ All channels joined
+      if (notJoinedChannels.length === 0) {
+        return true;
+      }
+  
+      // 🔘 Only show missing channel buttons
+      const joinButtons = notJoinedChannels.map((ch) => ({
+        text: ch.text,
+        url: ch.url,
+      }));
+  
+      await ctx.replyWithAnimation(
+        'CgACAgUAAxkBAAMaaTcPME2k0MGOdKyHpwEProcoi_8AAmYZAALK8rlVtT1IxIOSGeo2BA',
+        {
+          caption:
+            '<b>🚫 To use this bot, you must join the remaining channels.</b>',
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              joinButtons,
+              [{ text: '🔄 Try Again', callback_data: 'check_join' }],
+            ],
+          },
+        },
+      );
+  
+      return false;
     } catch (err) {
       console.error('checkSubscription error:', err.message);
       return false;
     }
   }
+  
   onModuleInit() {
 
     // this.bot.on('message', async (ctx) => {
