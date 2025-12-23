@@ -11,6 +11,7 @@ import { Movie } from './movie.schema';
 import { ConfigService } from '@nestjs/config';
 import { User } from './user.schema';
 import { TempMessage } from './temp.schema';
+import { ratio } from 'fuzzball';
 // import { pay } from 'node_modules/telegraf/typings/button';
 
 type ChannelInfo = {
@@ -341,89 +342,166 @@ export class MovieBotService implements OnModuleInit {
     //   'CAACAgUAAxkBAAMFaSc8IasIRuuXn1VeS6izQIULISAAAkYcAAKN_zlVtkSzXMfczYQ2BA',
     // );
     console.log('Checking 1');
+    // try {
+    //   const name = ctx.message.text.trim();
+    //   const movie = await this.movieModel.findOne({
+    //     name: { $regex: name, $options: 'i' },
+    //   });
+
+    //   console.log('Checking 2', movie);
+
+    //   if (!movie) {
+    //     // await ctx.deleteMessage(anime.message_id);
+    //     const msg = await ctx.reply(
+    //       `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Movie is not Available in My Database.</b>\n\n<b>Movie Name Must be in Correct Format</b>\n\n<b><u>Examples for Typing</u></b>\n 1.(Web Series Name) S01 or (Web Series Name) S02 \n2. (Movie Name) \n3. (Web Series Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Movie Available in our bot Using <b> List of Movies</b> </i> \n\n <i>If the Movie is not in the List. Kindly Contact the Admin Using <b>Request Movie</b></i>`,
+    //       {
+    //         parse_mode: 'HTML',
+    //         reply_markup: {
+    //           inline_keyboard: [
+    //             [
+    //               {
+    //                 text: 'Request Movie',
+    //                 url: 'https://t.me/+JH-KR5ZMJUQyNzI1',
+    //               },
+    //               {
+    //                 text: 'List of Movies',
+    //                 callback_data: 'list',
+    //               },
+    //             ],
+    //           ],
+    //         },
+    //       },
+    //     );
+    //     await this.tempMessageModel.create({
+    //       chatId: ctx.chat.id,
+    //       messageId: msg.message_id,
+    //       expireAt: this.expireAt,
+    //     });
+    //     return;
+    //   }
+
+    //   const sentMessages: { chatId: number; messageId: number }[] = [];
+
+    //   // Poster
+    //   if (movie.poster?.chatId && movie.poster?.messageId) {
+    //     const posterMsg = await ctx.telegram.copyMessage(
+    //       ctx.chat.id,
+    //       movie.poster.chatId,
+    //       movie.poster.messageId,
+    //     );
+    //     sentMessages.push({
+    //       chatId: ctx.chat.id,
+    //       messageId: posterMsg.message_id,
+    //     });
+    //   }
+
+    //   // // Files
+    //   // for (const file of movie.files) {
+    //   //   const fileMsg = await ctx.telegram.forwardMessage(
+    //   //     ctx.chat.id,
+    //   //     file.chatId,
+    //   //     file.messageId,
+    //   //   );
+    //   //   sentMessages.push({
+    //   //     chatId: ctx.chat.id,
+    //   //     messageId: fileMsg.message_id,
+    //   //   });
+    //   // }
+
+    //   await this.sendEpisodePage(ctx, movie, 0);
+
+    //   // await ctx.deleteMessage(anime.message_id);
+
+    //   const expireAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    //   for (const msg of sentMessages) {
+    //     await this.tempMessageModel.create({
+    //       chatId: msg.chatId,
+    //       messageId: msg.messageId,
+    //       userId: ctx.from.id,
+    //       expireAt,
+    //     });
+    //     console.log('message saved');
+    //   }
+    // } catch (err) {
+    //   console.error('Movie search error:', err.message);
+    // }
+
     try {
-      const name = ctx.message.text.trim();
-      const movie = await this.movieModel.findOne({
-        name: { $regex: name, $options: 'i' },
+      const rawText = ctx.message.text.trim();
+
+      // 🟢 extract year
+      const yearMatch = rawText.match(/\b\d{4}\b/);
+      const year = yearMatch ? Number(yearMatch[0]) : null;
+
+      // 🟢 remove year from name
+      const cleanedName = rawText
+        .replace(/\b\d{4}\b/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      console.log('RAW:', rawText);
+      console.log('YEAR:', year);
+      console.log('CLEAN NAME:', cleanedName);
+
+      // 🟡 find possible movies
+      const movies = await this.movieModel.find({
+        name: { $regex: cleanedName, $options: 'i' },
+        ...(year ? { year } : {}),
       });
 
-      console.log('Checking 2', movie);
+      console.log('FOUND MOVIES:', movies.length);
 
-      if (!movie) {
-        // await ctx.deleteMessage(anime.message_id);
-        const msg = await ctx.reply(
-          `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Movie is not Available in My Database.</b>\n\n<b>Movie Name Must be in Correct Format</b>\n\n<b><u>Examples for Typing</u></b>\n 1.(Web Series Name) S01 or (Web Series Name) S02 \n2. (Movie Name) \n3. (Web Series Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Movie Available in our bot Using <b> List of Movies</b> </i> \n\n <i>If the Movie is not in the List. Kindly Contact the Admin Using <b>Request Movie</b></i>`,
-          {
-            parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: 'Request Movie',
-                    url: 'https://t.me/+JH-KR5ZMJUQyNzI1',
-                  },
-                  {
-                    text: 'List of Movies',
-                    callback_data: 'list',
-                  },
-                ],
-              ],
-            },
-          },
+      // ❌ no movie
+      if (movies.length === 0) {
+        await ctx.reply(
+          `<b>❌ Movie not found</b>\n\nTry correct spelling or use /list`,
+          { parse_mode: 'HTML' },
         );
-        await this.tempMessageModel.create({
-          chatId: ctx.chat.id,
-          messageId: msg.message_id,
-          expireAt: this.expireAt,
-        });
         return;
       }
 
-      const sentMessages: { chatId: number; messageId: number }[] = [];
-
-      // Poster
-      if (movie.poster?.chatId && movie.poster?.messageId) {
-        const posterMsg = await ctx.telegram.copyMessage(
-          ctx.chat.id,
-          movie.poster.chatId,
-          movie.poster.messageId,
-        );
-        sentMessages.push({
-          chatId: ctx.chat.id,
-          messageId: posterMsg.message_id,
-        });
+      // ✅ only one movie
+      if (movies.length === 1) {
+        return this.sendEpisodePage(ctx, movies[0], 0);
       }
 
-      // // Files
-      // for (const file of movie.files) {
-      //   const fileMsg = await ctx.telegram.forwardMessage(
-      //     ctx.chat.id,
-      //     file.chatId,
-      //     file.messageId,
-      //   );
-      //   sentMessages.push({
-      //     chatId: ctx.chat.id,
-      //     messageId: fileMsg.message_id,
-      //   });
-      // }
+      // 🔥 FUZZY MATCH (multiple movies)
+      let bestMatch = null;
+      let bestScore = 0;
 
-      await this.sendEpisodePage(ctx, movie, 0);
+      for (const movie of movies) {
+        let score = ratio(cleanedName.toLowerCase(), movie.name.toLowerCase());
 
-      // await ctx.deleteMessage(anime.message_id);
+        // 🎯 bonus if year matches in name
+        if (year && movie.name.includes(String(year))) {
+          score += 20;
+        }
 
-      const expireAt = new Date(Date.now() + 5 * 60 * 1000);
-
-      for (const msg of sentMessages) {
-        await this.tempMessageModel.create({
-          chatId: msg.chatId,
-          messageId: msg.messageId,
-          userId: ctx.from.id,
-          expireAt,
-        });
-        console.log('message saved');
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = movie;
+        }
       }
+
+      console.log('BEST MATCH:', bestMatch?.name, bestScore);
+
+      // ✅ confident match
+      if (bestMatch && bestScore >= 90) {
+        return this.sendEpisodePage(ctx, bestMatch, 0);
+      }
+
+      // ❌ show multiple list
+      let list = '';
+      movies.forEach((m) => {
+        list += `• <code>${m.name}</code>\n`;
+      });
+
+      await ctx.reply(`<b>Multiple movies found</b>\n\n${list}`, {
+        parse_mode: 'HTML',
+      });
     } catch (err) {
-      console.error('Movie search error:', err.message);
+      console.error('sendMovie error:', err.message);
     }
   }
 

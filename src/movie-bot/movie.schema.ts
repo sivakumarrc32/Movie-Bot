@@ -9,6 +9,9 @@ export class Movie extends Document {
   @Prop()
   caption: string;
 
+  @Prop({ default: 0 })
+  year: number;
+
   @Prop({
     type: {
       chatId: { type: String },
