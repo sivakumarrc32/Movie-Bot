@@ -467,13 +467,13 @@ export class MovieBotService implements OnModuleInit {
       }
 
       // 🔥 FUZZY MATCH (multiple movies)
-      let bestMatch = null;
+      let bestMatch: Movie | null = null;
       let bestScore = 0;
 
       for (const movie of movies) {
         let score = ratio(cleanedName.toLowerCase(), movie.name.toLowerCase());
 
-        // 🎯 bonus if year matches in name
+        // 🎯 bonus if year matches
         if (year && movie.name.includes(String(year))) {
           score += 20;
         }
@@ -487,7 +487,7 @@ export class MovieBotService implements OnModuleInit {
       console.log('BEST MATCH:', bestMatch?.name, bestScore);
 
       // ✅ confident match
-      if (bestMatch && bestScore >= 90) {
+      if (bestMatch && bestScore >= 85) {
         return this.sendEpisodePage(ctx, bestMatch, 0);
       }
 
