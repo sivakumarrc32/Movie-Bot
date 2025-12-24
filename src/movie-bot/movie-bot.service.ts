@@ -429,12 +429,13 @@ export class MovieBotService implements OnModuleInit {
 
     try {
       const rawText = ctx.message.text.trim();
+      
 
       // 🟢 extract year
       const yearMatch = rawText.match(/\b\d{4}\b/);
       const year = yearMatch ? Number(yearMatch[0]) : null;
 
-      const sentMessages: { chatId: number; messageId: number }[] = [];
+      // const sentMessages: { chatId: number; messageId: number }[] = [];
 
       // 🟢 remove year from name
       const cleanedName = rawText
@@ -493,9 +494,10 @@ export class MovieBotService implements OnModuleInit {
             movies[0].poster.chatId,
             movies[0].poster.messageId,
           );
-          sentMessages.push({
+          await this.tempMessageModel.create({
             chatId: ctx.chat.id,
             messageId: posterMsg.message_id,
+            expireAt: new Date(Date.now() + 5 * 60 * 1000),
           });
         }
         return this.sendEpisodePage(ctx, movies[0], 0);
@@ -530,24 +532,26 @@ export class MovieBotService implements OnModuleInit {
             bestMatch.poster.chatId,
             bestMatch.poster.messageId,
           );
-          sentMessages.push({
+          await this.tempMessageModel.create({
             chatId: ctx.chat.id,
             messageId: posterMsg.message_id,
+            expireAt: new Date(Date.now() + 5 * 60 * 1000),
           });
+          
         }
         return this.sendEpisodePage(ctx, bestMatch, 0);
       }
 
-      const expireAt = new Date(Date.now() + 5 * 60 * 1000);
 
-      for (const msg of sentMessages) {
-        await this.tempMessageModel.create({
-          chatId: msg.chatId,
-          messageId: msg.messageId,
-          userId: ctx.from.id,
-          expireAt,
-        });
-      }
+
+      // for (const msg of sentMessages) {
+      //   await this.tempMessageModel.create({
+      //     chatId: msg.chatId,
+      //     messageId: msg.messageId,
+      //     userId: ctx.from.id,
+      //     expireAt,
+      //   });
+      // }
 
       // ❌ show multiple list
       let list = '';
@@ -563,7 +567,7 @@ export class MovieBotService implements OnModuleInit {
         chatId: msg.chat.id,
         messageId: msg.message_id,
         userId: ctx.from.id,
-        expireAt,
+        expireAt: this.expireAt,
       });
     } catch (err) {
       console.error('sendMovie error:', err.message);
@@ -694,8 +698,6 @@ export class MovieBotService implements OnModuleInit {
         return;
       }
 
-      const sentMessages: { chatId: number; messageId: number }[] = [];
-
       // 🔥 FUZZY MATCH
       let bestMatch: Movie | null = null;
       let bestScore = 0;
@@ -719,25 +721,26 @@ export class MovieBotService implements OnModuleInit {
             bestMatch.poster.chatId,
             bestMatch.poster.messageId,
           );
-          sentMessages.push({
+          await this.tempMessageModel.create({
             chatId: ctx.chat.id,
             messageId: posterMsg.message_id,
+            expireAt: new Date(Date.now() + 5 * 60 * 1000),
           });
         }
         return this.sendEpisodePage(ctx, bestMatch, 0);
       }
 
-      const expireAt = new Date(Date.now() + 5 * 60 * 1000);
+      // const expireAt = new Date(Date.now() + 5 * 60 * 1000);
 
-      for (const msg of sentMessages) {
-        await this.tempMessageModel.create({
-          chatId: msg.chatId,
-          messageId: msg.messageId,
-          userId: ctx.from.id,
-          expireAt,
-        });
-        console.log('message saved');
-      }
+      // for (const msg of sentMessages) {
+      //   await this.tempMessageModel.create({
+      //     chatId: msg.chatId,
+      //     messageId: msg.messageId,
+      //     userId: ctx.from.id,
+      //     expireAt,
+      //   });
+      //   console.log('message saved');
+      // }
 
       // ❌ no confident match
       const msg = await ctx.reply(
@@ -761,7 +764,7 @@ export class MovieBotService implements OnModuleInit {
         },
       );
       await this.tempMessageModel.create({
-        chatId:msg.chat.id,
+        chatId: msg.chat.id,
         messageId: msg.message_id,
         expireAt: this.expireAt,
       });
