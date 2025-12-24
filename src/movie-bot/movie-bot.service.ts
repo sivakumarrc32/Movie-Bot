@@ -687,7 +687,7 @@ export class MovieBotService implements OnModuleInit {
           },
         );
         await this.tempMessageModel.create({
-          chatId: ctx.chat.id,
+          chatId: msg.chat.id,
           messageId: msg.message_id,
           expireAt: this.expireAt,
         });
@@ -720,7 +720,7 @@ export class MovieBotService implements OnModuleInit {
             bestMatch.poster.messageId,
           );
           sentMessages.push({
-            chatId: ctx.chat.id,
+            chatId: posterMsg.chat.id,
             messageId: posterMsg.message_id,
           });
         }
@@ -761,7 +761,7 @@ export class MovieBotService implements OnModuleInit {
         },
       );
       await this.tempMessageModel.create({
-        chatId: ctx.chat.id,
+        chatId:msg.chat.id,
         messageId: msg.message_id,
         expireAt: this.expireAt,
       });
