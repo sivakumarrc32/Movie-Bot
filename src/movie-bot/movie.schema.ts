@@ -9,7 +9,7 @@ export class Movie extends Document {
   @Prop()
   caption: string;
 
-  @Prop({ default: 0 })
+  @Prop({ default: null })
   year: number;
 
   @Prop({
