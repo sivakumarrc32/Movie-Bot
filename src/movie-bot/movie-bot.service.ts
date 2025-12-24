@@ -555,8 +555,15 @@ export class MovieBotService implements OnModuleInit {
         list += `• <code>${m.name}</code>\n`;
       });
 
-      await ctx.reply(`<b>Multiple movies found</b>\n\n${list}`, {
+      const msg = await ctx.reply(`<b>Multiple movies found</b>\n\n${list}`, {
         parse_mode: 'HTML',
+      });
+
+      await this.tempMessageModel.create({
+        chatId: msg.chat.id,
+        messageId: msg.message_id,
+        userId: ctx.from.id,
+        expireAt,
       });
     } catch (err) {
       console.error('sendMovie error:', err.message);
