@@ -720,7 +720,7 @@ export class MovieBotService implements OnModuleInit {
             bestMatch.poster.messageId,
           );
           sentMessages.push({
-            chatId: posterMsg.chat.id,
+            chatId: ctx.chat.id,
             messageId: posterMsg.message_id,
           });
         }
