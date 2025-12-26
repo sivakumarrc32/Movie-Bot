@@ -429,7 +429,6 @@ export class MovieBotService implements OnModuleInit {
 
     try {
       const rawText = ctx.message.text.trim();
-      
 
       // 🟢 extract year
       const yearMatch = rawText.match(/\b\d{4}\b/);
@@ -537,12 +536,9 @@ export class MovieBotService implements OnModuleInit {
             messageId: posterMsg.message_id,
             expireAt: new Date(Date.now() + 5 * 60 * 1000),
           });
-          
         }
         return this.sendEpisodePage(ctx, bestMatch, 0);
       }
-
-
 
       // for (const msg of sentMessages) {
       //   await this.tempMessageModel.create({
@@ -1001,7 +997,9 @@ export class MovieBotService implements OnModuleInit {
     const start = page * this.PAGE_SIZE;
     const end = start + this.PAGE_SIZE;
 
-    const files = movie.files.slice(start, end);
+    // 🔴 CHANGE 1: reverse files (DB affect aagadhu)
+    const reversedFiles = [...movie.files].reverse();
+    const files = reversedFiles.slice(start, end);
     const totalPages = Math.ceil(movie.files.length / this.PAGE_SIZE);
 
     const buttons: any[] = [];
@@ -1018,10 +1016,13 @@ export class MovieBotService implements OnModuleInit {
         .replace(/^@[^-_:]+[-_:]+[_]*\s*/, '') // remove @BotName prefixes with - or _
         .replace(/\.mkv$/i, '');
       const fileSize = file.size || '';
+      // 🔴 CHANGE 2: correct index for reversed order
+      const originalIndex = movie.files.length - 1 - (start + idx);
+
       buttons.push([
         {
-          text: `[${fileSize}]-${fileName}`,
-          callback_data: `file_${movie._id}_${start + idx}`,
+          text: `[${fileSize}] - ${fileName}`,
+          callback_data: `file_${movie._id}_${originalIndex}`,
         },
       ]);
     });
@@ -1039,7 +1040,7 @@ export class MovieBotService implements OnModuleInit {
       callback_data: 'noop',
     });
     if (end < movie.files.length) {
-      console.log('end < anime.files.length', end, movie.files.length);
+      // console.log('end < anime.files.length', end, movie.files.length);
       navButtons.push({
         text: 'Next ➡️',
         callback_data: `page_${movie._id}_${page + 1}`,
