@@ -177,7 +177,7 @@ export class AnimeService implements OnModuleInit {
       keyboard.push([{ text: '🔄 Try Again', callback_data: 'check_join' }]);
 
       await ctx.replyWithAnimation(
-        'CgACAgUAAxkBAAMaaTcPME2k0MGOdKyHpwEProcoi_8AAmYZAALK8rlVtT1IxIOSGeo2BA',
+        'CgACAgUAAxkBAAIM6WlhV0ySZvJz7GhO7DNz1IdU6hqgAAIbHQACT_8RV-xe9oQ-2OHMOAQ',
         {
           caption:
             `Hi ${ctx.from.first_name},\n\n` +
