@@ -11,6 +11,8 @@ import { ConfigService } from '@nestjs/config';
 import { Anime } from './anime.schema';
 import { AnimeUser } from './anime.user.schema';
 import { TempMessage } from 'src/movie-bot/temp.schema';
+import { ratio } from 'fuzzball';
+
 @Injectable()
 export class AnimeService implements OnModuleInit {
   public bot: Telegraf;
@@ -40,7 +42,7 @@ export class AnimeService implements OnModuleInit {
     return true;
   }
 
-  private channels = ['-1003261050452', '-1003624602414','-1003233206043']; // 🔴 unga rendu channel usernames
+  private channels = ['-1003261050452', '-1003624602414', '-1003233206043']; // 🔴 unga rendu channel usernames
 
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
@@ -223,24 +225,24 @@ export class AnimeService implements OnModuleInit {
       const limit = 15;
       const skip = (page - 1) * limit;
 
-      const totalMovies = await this.animeModel.countDocuments();
-      const totalPages = Math.ceil(totalMovies / limit);
-      const movies = await this.animeModel
+      const totalAnimes = await this.animeModel.countDocuments();
+      const totalPages = Math.ceil(totalAnimes / limit);
+      const anime = await this.animeModel
         .find({}, 'name')
         .skip(skip)
         .limit(limit);
 
-      if (!movies.length) {
-        return ctx.reply('<b>😢 No movies available.</b>', {
+      if (!anime.length) {
+        return ctx.reply('<b>😢 No Animes available.</b>', {
           parse_mode: 'HTML',
         });
       }
 
-      let msg = `<b><u>Available Movies :</u></b>\n\n🎬 <b>Page ${page}</b>\n\n`;
-      movies.forEach(
+      let msg = `<b><u>Available Animes :</u></b>\n\n🎬 <b>Page ${page}</b>\n\n`;
+      anime.forEach(
         (m, i) => (msg += `<b>${skip + i + 1}. <code>${m.name}</code></b>\n`),
       );
-      msg += `\n👉 Type the <b>Movie Name</b> to get Movie.\n`;
+      msg += `\n👉 Type the <b>Anime Name</b> to get anime.\n`;
 
       // await ctx.deleteMessage(ani.message_id);
 
@@ -254,7 +256,7 @@ export class AnimeService implements OnModuleInit {
         text: `Pages ${page}/${totalPages}`,
         callback_data: 'noop',
       });
-      if (skip + limit < totalMovies)
+      if (skip + limit < totalAnimes)
         buttons.push({
           text: 'Next ➡️',
           callback_data: `list_page_${page + 1}`,
@@ -287,11 +289,11 @@ export class AnimeService implements OnModuleInit {
 
     try {
       const name = ctx.message.text.trim();
-      const anime = await this.animeModel.findOne({
+      const animes = await this.animeModel.find({
         name: { $regex: name, $options: 'i' },
       });
 
-      if (!anime) {
+      if (animes.length === 0) {
         await ctx.deleteMessage(ani.message_id);
         const msg = await ctx.reply(
           `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Anime is not Available in My Database.</b>\n\n<b>Anime Name Must be in Correct Format</b>\n\n <b><u>Examples for Typing</u></b>\n 1.(Anime Name) S01 or (Anime Name) S02 \n2. (Anime Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Anime Available in our bot Using <b> List of Animes</b> </i> \n\n <i>If the Anime is not in the List. Kindly Contact the Admin Using <b>Request Anime</b></i>`,
@@ -324,47 +326,125 @@ export class AnimeService implements OnModuleInit {
         return;
       }
 
-      const sentMessages: { chatId: number; messageId: number }[] = [];
+      // const sentMessages: { chatId: number; messageId: number }[] = [];
 
-      // Poster
-      if (anime.poster?.chatId && anime.poster?.messageId) {
-        const posterMsg = await ctx.telegram.forwardMessage(
-          ctx.chat.id,
-          anime.poster.chatId,
-          anime.poster.messageId,
-        );
-        sentMessages.push({
-          chatId: ctx.chat.id,
-          messageId: posterMsg.message_id,
-        });
-      }
-
-      // // Files
-      // for (const file of anime.files) {
-      //   const fileMsg = await ctx.telegram.forwardMessage(
+      // // Poster
+      // if (anime.poster?.chatId && anime.poster?.messageId) {
+      //   const posterMsg = await ctx.telegram.forwardMessage(
       //     ctx.chat.id,
-      //     file.chatId,
-      //     file.messageId,
+      //     anime.poster.chatId,
+      //     anime.poster.messageId,
       //   );
       //   sentMessages.push({
       //     chatId: ctx.chat.id,
-      //     messageId: fileMsg.message_id,
+      //     messageId: posterMsg.message_id,
       //   });
       // }
-      await this.sendEpisodePage(ctx, anime, 0);
 
-      await ctx.deleteMessage(ani.message_id);
-      const expireAt = new Date(Date.now() + 5 * 60 * 1000);
+      // // // Files
+      // // for (const file of anime.files) {
+      // //   const fileMsg = await ctx.telegram.forwardMessage(
+      // //     ctx.chat.id,
+      // //     file.chatId,
+      // //     file.messageId,
+      // //   );
+      // //   sentMessages.push({
+      // //     chatId: ctx.chat.id,
+      // //     messageId: fileMsg.message_id,
+      // //   });
+      // // }
+      // await this.sendEpisodePage(ctx, anime, 0);
 
-      for (const msg of sentMessages) {
-        await this.tempMessageModel.create({
-          chatId: ctx.chat.id,
-          messageId: msg.messageId,
-          userId: ctx.from.id,
-          expireAt,
-        });
-        console.log('message saved');
+      // await ctx.deleteMessage(ani.message_id);
+      // const expireAt = new Date(Date.now() + 5 * 60 * 1000);
+
+      // for (const msg of sentMessages) {
+      //   await this.tempMessageModel.create({
+      //     chatId: ctx.chat.id,
+      //     messageId: msg.messageId,
+      //     userId: ctx.from.id,
+      //     expireAt,
+      //   });
+      //   console.log('message saved');
+      // }
+      if (animes.length === 1) {
+        //Poster
+        if (animes[0].poster?.chatId && animes[0].poster?.messageId) {
+          const posterMsg = await ctx.telegram.copyMessage(
+            ctx.chat.id,
+            animes[0].poster.chatId,
+            animes[0].poster.messageId,
+          );
+          await this.tempMessageModel.create({
+            chatId: ctx.chat.id,
+            messageId: posterMsg.message_id,
+            expireAt: new Date(Date.now() + 5 * 60 * 1000),
+          });
+        }
+        return this.sendEpisodePage(ctx, animes[0], 0);
+      } // 🔥 FUZZY MATCH (multiple movies)
+      let bestMatch: Anime | null = null;
+      let bestScore = 0;
+
+      for (const anime of animes) {
+        const score = ratio(name.toLowerCase(), anime.name.toLowerCase());
+
+        // 🎯 bonus if year matches
+        // if (year && movie.name.includes(String(year))) {
+        //   score += 20;
+        // }
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = anime;
+        }
       }
+
+      console.log('BEST MATCH:', bestMatch?.name, bestScore);
+
+      // ✅ confident match
+      if (bestMatch && bestScore >= 90) {
+        //Poster
+        if (bestMatch.poster?.chatId && bestMatch.poster?.messageId) {
+          const posterMsg = await ctx.telegram.copyMessage(
+            ctx.chat.id,
+            bestMatch.poster.chatId,
+            bestMatch.poster.messageId,
+          );
+          await this.tempMessageModel.create({
+            chatId: ctx.chat.id,
+            messageId: posterMsg.message_id,
+            expireAt: new Date(Date.now() + 5 * 60 * 1000),
+          });
+        }
+        return this.sendEpisodePage(ctx, bestMatch, 0);
+      }
+
+      // for (const msg of sentMessages) {
+      //   await this.tempMessageModel.create({
+      //     chatId: msg.chatId,
+      //     messageId: msg.messageId,
+      //     userId: ctx.from.id,
+      //     expireAt,
+      //   });
+      // }
+
+      // ❌ show multiple list
+      let list = '';
+      animes.forEach((m) => {
+        list += `• <code>${m.name}</code>\n`;
+      });
+
+      const msg = await ctx.reply(`<b>Multiple Animes found</b>\n\n${list}`, {
+        parse_mode: 'HTML',
+      });
+
+      await this.tempMessageModel.create({
+        chatId: msg.chat.id,
+        messageId: msg.message_id,
+        userId: ctx.from.id,
+        expireAt: new Date(Date.now() + 5 * 60 * 1000),
+      });
     } catch (err) {
       console.error('Anime search error:', err.message);
     }
@@ -378,12 +458,11 @@ export class AnimeService implements OnModuleInit {
     );
 
     try {
+      const searchText = name?.trim().toLowerCase();
       // const name = ctx.message.text.trim();
-      const anime = await this.animeModel.findOne({
-        name: { $regex: name, $options: 'i' },
-      });
+      const animes = await this.animeModel.find();
 
-      if (!anime) {
+      if (animes.length === 0) {
         await ctx.deleteMessage(ani.message_id);
         const msg = await ctx.reply(
           `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Anime is not Available in My Database.</b>\n\n<b>Anime Name Must be in Correct Format</b>\n\n <b><u>Examples for Typing</u></b>\n 1.(Anime Name) S01 or (Anime Name) S02 \n2. (Anime Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Anime Available in our bot Using <b> List of Animes</b> </i> \n\n <i>If the Anime is not in the List. Kindly Contact the Admin Using <b>Request Anime</b></i>`,
@@ -416,47 +495,118 @@ export class AnimeService implements OnModuleInit {
         return;
       }
 
-      const sentMessages: { chatId: number; messageId: number }[] = [];
+      // const sentMessages: { chatId: number; messageId: number }[] = [];
 
-      // Poster
-      if (anime.poster?.chatId && anime.poster?.messageId) {
-        const posterMsg = await ctx.telegram.forwardMessage(
-          ctx.chat.id,
-          anime.poster.chatId,
-          anime.poster.messageId,
-        );
-        sentMessages.push({
-          chatId: ctx.chat.id,
-          messageId: posterMsg.message_id,
-        });
-      }
-
-      // // Files
-      // for (const file of anime.files) {
-      //   const fileMsg = await ctx.telegram.forwardMessage(
+      // // Poster
+      // if (anime.poster?.chatId && anime.poster?.messageId) {
+      //   const posterMsg = await ctx.telegram.forwardMessage(
       //     ctx.chat.id,
-      //     file.chatId,
-      //     file.messageId,
+      //     anime.poster.chatId,
+      //     anime.poster.messageId,
       //   );
       //   sentMessages.push({
       //     chatId: ctx.chat.id,
-      //     messageId: fileMsg.message_id,
+      //     messageId: posterMsg.message_id,
       //   });
       // }
-      await this.sendEpisodePage(ctx, anime, 0);
 
-      await ctx.deleteMessage(ani.message_id);
-      const expireAt = new Date(Date.now() + 5 * 60 * 1000);
+      // // // Files
+      // // for (const file of anime.files) {
+      // //   const fileMsg = await ctx.telegram.forwardMessage(
+      // //     ctx.chat.id,
+      // //     file.chatId,
+      // //     file.messageId,
+      // //   );
+      // //   sentMessages.push({
+      // //     chatId: ctx.chat.id,
+      // //     messageId: fileMsg.message_id,
+      // //   });
+      // // }
+      // await this.sendEpisodePage(ctx, anime, 0);
 
-      for (const msg of sentMessages) {
-        await this.tempMessageModel.create({
-          chatId: ctx.chat.id,
-          messageId: msg.messageId,
-          userId: ctx.from.id,
-          expireAt,
-        });
-        console.log('message saved');
+      // await ctx.deleteMessage(ani.message_id);
+      // const expireAt = new Date(Date.now() + 5 * 60 * 1000);
+
+      // for (const msg of sentMessages) {
+      //   await this.tempMessageModel.create({
+      //     chatId: ctx.chat.id,
+      //     messageId: msg.messageId,
+      //     userId: ctx.from.id,
+      //     expireAt,
+      //   });
+      //   console.log('message saved');
+      // }
+      // 🔥 FUZZY MATCH
+      let bestMatch: Anime | null = null;
+      let bestScore = 0;
+
+      for (const anime of animes) {
+        if(!searchText) return;
+        const score = ratio(searchText, anime.name.toLowerCase());
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = anime;
+        }
       }
+
+      console.log('BEST MATCH:', bestMatch?.name, bestScore);
+
+      // ✅ confident match
+      if (bestMatch && bestScore >= 90) {
+        if (bestMatch.poster?.chatId && bestMatch.poster?.messageId) {
+          const posterMsg = await ctx.telegram.copyMessage(
+            ctx.chat.id,
+            bestMatch.poster.chatId,
+            bestMatch.poster.messageId,
+          );
+          await this.tempMessageModel.create({
+            chatId: ctx.chat.id,
+            messageId: posterMsg.message_id,
+            expireAt: new Date(Date.now() + 5 * 60 * 1000),
+          });
+        }
+        return this.sendEpisodePage(ctx, bestMatch, 0);
+      }
+
+      // const expireAt = new Date(Date.now() + 5 * 60 * 1000);
+
+      // for (const msg of sentMessages) {
+      //   await this.tempMessageModel.create({
+      //     chatId: msg.chatId,
+      //     messageId: msg.messageId,
+      //     userId: ctx.from.id,
+      //     expireAt,
+      //   });
+      //   console.log('message saved');
+      // }
+
+      // ❌ no confident match
+      const msg = await ctx.reply(
+        `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Anime is not Available in My Database.</b>\n\n<b>Anime Name Must be in Correct Format</b>\n\n<b><u>Examples for Typing</u></b>\n 1.(Web Series Name) S01 or (Web Series Name) S02 \n2. (Anime Name) \n3. (Web Series Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Anime Available in our bot Using <b> List of Animes</b> </i> \n\n <i>If the Anime is not in the List. Kindly Contact the Admin Using <b>Request Anime</b></i>`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: 'Request Anime',
+                  url: 'https://t.me/+JH-KR5ZMJUQyNzI1',
+                },
+                {
+                  text: 'List of Animes',
+                  callback_data: 'list',
+                },
+              ],
+            ],
+          },
+        },
+      );
+      await this.tempMessageModel.create({
+        chatId: msg.chat.id,
+        messageId: msg.message_id,
+        expireAt: new Date(Date.now() + 5 * 60 * 1000),
+      });
     } catch (err) {
       console.error('Anime search error:', err.message);
     }

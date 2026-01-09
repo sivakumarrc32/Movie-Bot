@@ -34,7 +34,6 @@ export class MovieBotService implements OnModuleInit {
   ) {
     this.bot = new Telegraf(this.configService.get('MOVIE_BOT_TOKEN')!);
     this.ownerId = 992923409;
-    console.log(this.configService.get('MOVIE_BOT_TOKEN'));
   }
 
   private checkOwner(ctx: any): boolean {
