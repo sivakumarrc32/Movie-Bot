@@ -834,7 +834,8 @@ export class AnimeService implements OnModuleInit {
     const start = page * this.PAGE_SIZE;
     const end = start + this.PAGE_SIZE;
 
-    const files = anime.files.slice(start, end);
+    const reversedFiles = [...anime.files].reverse();
+    const files = reversedFiles.slice(start, end);
     const totalPages = Math.ceil(anime.files.length / this.PAGE_SIZE);
 
     const buttons: any[] = [];
@@ -851,10 +852,12 @@ export class AnimeService implements OnModuleInit {
         .replace(/^@[^-_]+[-_]*\s*-*\s*/, '') // remove @BotName prefixes with - or _
         .replace(/\.mkv$/i, '');
       const fileSize = file.size || '';
+
+      const originalIndex = anime.files.length - 1 - (start + idx);
       buttons.push([
         {
           text: `[${fileSize}]-${fileName}`,
-          callback_data: `file_${anime._id}_${start + idx}`,
+          callback_data: `file_${anime._id}_${originalIndex}`,
         },
       ]);
     });
