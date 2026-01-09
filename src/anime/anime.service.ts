@@ -430,6 +430,7 @@ export class AnimeService implements OnModuleInit {
       // }
 
       // ❌ show multiple list
+      await ctx.deleteMessage(ani.message_id);
       let list = '';
       animes.forEach((m) => {
         list += `• <code>${m.name}</code>\n`;
@@ -580,7 +581,7 @@ export class AnimeService implements OnModuleInit {
       //   });
       //   console.log('message saved');
       // }
-
+      await ctx.deleteMessage(ani.message_id);
       // ❌ no confident match
       const msg = await ctx.reply(
         `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Anime is not Available in My Database.</b>\n\n<b>Anime Name Must be in Correct Format</b>\n\n<b><u>Examples for Typing</u></b>\n 1.(Web Series Name) S01 or (Web Series Name) S02 \n2. (Anime Name) \n3. (Web Series Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Anime Available in our bot Using <b> List of Animes</b> </i> \n\n <i>If the Anime is not in the List. Kindly Contact the Admin Using <b>Request Anime</b></i>`,
