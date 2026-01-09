@@ -13,6 +13,13 @@ import { AnimeUser } from './anime.user.schema';
 import { TempMessage } from 'src/movie-bot/temp.schema';
 import { ratio } from 'fuzzball';
 
+type ChannelInfo = {
+  id: string;
+  text: string;
+  url: string;
+};
+
+
 @Injectable()
 export class AnimeService implements OnModuleInit {
   public bot: Telegraf;
@@ -42,50 +49,150 @@ export class AnimeService implements OnModuleInit {
     return true;
   }
 
-  private channels = ['-1003261050452', '-1003624602414', '-1003233206043']; // 🔴 unga rendu channel usernames
+  // private channels = ['-1003261050452', '-1003624602414', '-1003233206043']; // 🔴 unga rendu channel usernames
+
+  // private async checkSubscription(ctx: any): Promise<boolean> {
+  //   try {
+  //     for (const channel of this.channels) {
+  //       const chatMember = await ctx.telegram.getChatMember(
+  //         channel,
+  //         ctx.from.id,
+  //       );
+
+  //       if (chatMember.status === 'left') {
+  //         await ctx.replyWithAnimation(
+  //           'CgACAgUAAxkBAAIBqWje1uUB4Kfp1iH2SFv8PMY12VkXAAJ-GQACSsz4Vly_XR76PxZ-NgQ',
+  //           {
+  //             caption:
+  //               '<b>🚫 To use this bot, you must join all our channels first.</b>',
+  //             parse_mode: 'HTML',
+  //             reply_markup: {
+  //               inline_keyboard: [
+  //                 [
+  //                   {
+  //                     text: '📢 Join Channel 1',
+  //                     url: 'https://t.me/LordFourthMovieTamil',
+  //                   },
+  //                   {
+  //                     text: '📢 Join Channel 2',
+  //                     url: 'https://t.me/+uhgXU7hwvnk2YTRl',
+  //                   },
+  //                 ],
+  //                 [
+  //                   {
+  //                     text: 'Main Channel',
+  //                     url: 'https://t.me/+OnhJMqwc380zM2I1',
+  //                   },
+  //                 ],
+  //                 [{ text: 'Try Again', callback_data: 'check_join' }],
+  //               ],
+  //             },
+  //           },
+  //         );
+  //         return false;
+  //       }
+  //     }
+  //     return true;
+  //   } catch (err) {
+  //     console.error('checkSubscription error:', err.message);
+  //     return false;
+  //   }
+  // }
+
+  private channels: ChannelInfo[] = [
+    {
+      id: '-1003261050452',
+      text: '📢 Join Channel 1',
+      url: 'https://t.me/LordFourthAnimeTamil',
+    },
+    {
+      id: '-1003624602414',
+      text: '📢 Join Channel 2',
+      url: 'https://t.me/+uhgXU7hwvnk2YTRl',
+    },
+    {
+      id: '-1003579412645',
+      text: '📢 Join Channel 3',
+      url: 'https://t.me/+YfFvZ_QPOqBiYzE1',
+    },
+    {
+      id: '-1003233206043',
+      text: 'Main Channel',
+      url: 'https://t.me/+OnhJMqwc380zM2I1',
+    },
+  ]; // 🔴 unga rendu channel usernames
 
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
+      const notJoinedChannels: ChannelInfo[] = [];
+
+      // 🔍 Check each channel
       for (const channel of this.channels) {
-        const chatMember = await ctx.telegram.getChatMember(
-          channel,
+        const member = await ctx.telegram.getChatMember(
+          channel.id,
           ctx.from.id,
         );
 
-        if (chatMember.status === 'left') {
-          await ctx.replyWithAnimation(
-            'CgACAgUAAxkBAAIBqWje1uUB4Kfp1iH2SFv8PMY12VkXAAJ-GQACSsz4Vly_XR76PxZ-NgQ',
-            {
-              caption:
-                '<b>🚫 To use this bot, you must join all our channels first.</b>',
-              parse_mode: 'HTML',
-              reply_markup: {
-                inline_keyboard: [
-                  [
-                    {
-                      text: '📢 Join Channel 1',
-                      url: 'https://t.me/LordFourthMovieTamil',
-                    },
-                    {
-                      text: '📢 Join Channel 2',
-                      url: 'https://t.me/+uhgXU7hwvnk2YTRl',
-                    },
-                  ],
-                  [
-                    {
-                      text: 'Main Channel',
-                      url: 'https://t.me/+OnhJMqwc380zM2I1',
-                    },
-                  ],
-                  [{ text: 'Try Again', callback_data: 'check_join' }],
-                ],
-              },
-            },
-          );
-          return false;
+        // ❌ Only if NOT joined
+        if (member.status === 'left') {
+          notJoinedChannels.push(channel);
         }
       }
-      return true;
+
+      // ✅ User joined all channels
+      if (notJoinedChannels.length === 0) {
+        return true;
+      }
+
+      // 🎯 Split buttons
+      const channel1And2 = notJoinedChannels
+        .filter((ch) => ch.text !== 'Main Channel')
+        .map((ch) => ({
+          text: ch.text,
+          url: ch.url,
+        }));
+
+      const mainChannel = notJoinedChannels.find(
+        (ch) => ch.text === 'Main Channel',
+      );
+
+      const keyboard: any[] = [];
+
+      // 🔹 Channel 1 & 2 → same row
+      if (channel1And2.length > 0) {
+        keyboard.push(channel1And2);
+      }
+
+      // 🔹 Main Channel → single row
+      if (mainChannel) {
+        keyboard.push([
+          {
+            text: mainChannel.text,
+            url: mainChannel.url,
+          },
+        ]);
+      }
+
+      // 🔹 Try Again → single row
+      keyboard.push([{ text: '🔄 Try Again', callback_data: 'check_join' }]);
+
+      await ctx.replyWithAnimation(
+        'CgACAgUAAxkBAAMaaTcPME2k0MGOdKyHpwEProcoi_8AAmYZAALK8rlVtT1IxIOSGeo2BA',
+        {
+          caption:
+            `Hi ${ctx.from.first_name},\n\n` +
+            `<b>Intha channel la join pannunga</b>\n\n` +
+            `Movies direct-ah channel-la post pannuvom.\n` +
+            `Updates miss pannaama irukka join pannunga.\n\n` +
+            `👇 Keela irukkura button click pannunga`,
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: keyboard,
+          },
+        },
+      );
+
+      return false;
     } catch (err) {
       console.error('checkSubscription error:', err.message);
       return false;

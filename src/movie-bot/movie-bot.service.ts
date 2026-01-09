@@ -61,6 +61,11 @@ export class MovieBotService implements OnModuleInit {
       url: 'https://t.me/+uhgXU7hwvnk2YTRl',
     },
     {
+      id: '-1003579412645',
+      text: '📢 Join Channel 3',
+      url: 'https://t.me/+YfFvZ_QPOqBiYzE1',
+    },
+    {
       id: '-1003233206043',
       text: 'Main Channel',
       url: 'https://t.me/+OnhJMqwc380zM2I1',
