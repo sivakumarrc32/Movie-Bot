@@ -106,9 +106,9 @@ export class AnimeService implements OnModuleInit {
       url: 'https://t.me/LordFourthAnimeTamil',
     },
     {
-      id: '-1003624602414',
+      id: '-1003326848627',
       text: '📢 Join Channel 2',
-      url: 'https://t.me/+uhgXU7hwvnk2YTRl',
+      url: 'https://t.me/+Ekzqobyp6GY4OGE9',
     },
     {
       id: '-1003579412645',
@@ -116,9 +116,9 @@ export class AnimeService implements OnModuleInit {
       url: 'https://t.me/+YfFvZ_QPOqBiYzE1',
     },
     {
-      id: '-1003233206043',
+      id: '-1003624602414',
       text: 'Main Channel',
-      url: 'https://t.me/+OnhJMqwc380zM2I1',
+      url: 'https://t.me/+uhgXU7hwvnk2YTRl',
     },
   ]; // 🔴 unga rendu channel usernames
 
