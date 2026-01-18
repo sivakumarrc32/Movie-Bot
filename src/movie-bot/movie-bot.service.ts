@@ -72,82 +72,141 @@ export class MovieBotService implements OnModuleInit {
     },
   ]; // 🔴 unga rendu channel usernames
 
+  // private async checkSubscription(ctx: any): Promise<boolean> {
+  //   try {
+  //     const notJoinedChannels: ChannelInfo[] = [];
+
+  //     // 🔍 Check each channel
+  //     for (const channel of this.channels) {
+  //       const member = await ctx.telegram.getChatMember(
+  //         channel.id,
+  //         ctx.from.id,
+  //       );
+
+  //       // ❌ Only if NOT joined
+  //       if (member.status === 'left') {
+  //         notJoinedChannels.push(channel);
+  //       }
+  //     }
+
+  //     // ✅ User joined all channels
+  //     if (notJoinedChannels.length === 0) {
+  //       return true;
+  //     }
+
+  //     // 🎯 Split buttons
+  //     const channel1And2 = notJoinedChannels
+  //       .filter((ch) => ch.text !== 'Main Channel')
+  //       .map((ch) => ({
+  //         text: ch.text,
+  //         url: ch.url,
+  //       }));
+
+  //     const mainChannel = notJoinedChannels.find(
+  //       (ch) => ch.text === 'Main Channel',
+  //     );
+
+  //     const keyboard: any[] = [];
+
+  //     // 🔹 Channel 1 & 2 → same row
+  //     if (channel1And2.length > 0) {
+  //       keyboard.push(channel1And2);
+  //     }
+
+  //     // 🔹 Main Channel → single row
+  //     if (mainChannel) {
+  //       keyboard.push([
+  //         {
+  //           text: mainChannel.text,
+  //           url: mainChannel.url,
+  //         },
+  //       ]);
+  //     }
+
+  //     // 🔹 Try Again → single row
+  //     keyboard.push([{ text: '🔄 Try Again', callback_data: 'check_join' }]);
+
+  //     await ctx.replyWithAnimation(
+  //       'CgACAgUAAxkBAAMaaTcPME2k0MGOdKyHpwEProcoi_8AAmYZAALK8rlVtT1IxIOSGeo2BA',
+  //       {
+  //         caption:
+  //           `Hi ${ctx.from.first_name},\n\n` +
+  //           `<b>Intha channel la join pannunga</b>\n\n` +
+  //           `Movies direct-ah channel-la post pannuvom.\n` +
+  //           `Updates miss pannaama irukka join pannunga.\n\n` +
+  //           `👇 Keela irukkura button click pannunga`,
+  //         parse_mode: 'HTML',
+  //         reply_markup: {
+  //           inline_keyboard: keyboard,
+  //         },
+  //       },
+  //     );
+
+  //     return false;
+  //   } catch (err) {
+  //     console.error('checkSubscription error:', err.message);
+  //     return false;
+  //   }
+  // }
+
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
-      const notJoinedChannels: ChannelInfo[] = [];
-
-      // 🔍 Check each channel
+      const notJoined: ChannelInfo[] = [];
+  
+      // 🔍 Check join status
       for (const channel of this.channels) {
         const member = await ctx.telegram.getChatMember(
           channel.id,
           ctx.from.id,
         );
-
-        // ❌ Only if NOT joined
-        if (member.status === 'left') {
-          notJoinedChannels.push(channel);
+  
+        if (member.status === 'left' || member.status === 'kicked') {
+          notJoined.push(channel);
         }
       }
-
-      // ✅ User joined all channels
-      if (notJoinedChannels.length === 0) {
+  
+      // ✅ Already joined all
+      if (notJoined.length === 0) {
         return true;
       }
-
-      // 🎯 Split buttons
-      const channel1And2 = notJoinedChannels
-        .filter((ch) => ch.text !== 'Main Channel')
-        .map((ch) => ({
-          text: ch.text,
-          url: ch.url,
-        }));
-
-      const mainChannel = notJoinedChannels.find(
-        (ch) => ch.text === 'Main Channel',
-      );
-
+  
+      // 🎯 Build buttons (2 per row)
       const keyboard: any[] = [];
-
-      // 🔹 Channel 1 & 2 → same row
-      if (channel1And2.length > 0) {
-        keyboard.push(channel1And2);
+  
+      for (let i = 0; i < notJoined.length; i += 2) {
+        keyboard.push(
+          notJoined.slice(i, i + 2).map((ch) => ({
+            text: ch.text,
+            url: ch.url,
+          })),
+        );
       }
-
-      // 🔹 Main Channel → single row
-      if (mainChannel) {
-        keyboard.push([
-          {
-            text: mainChannel.text,
-            url: mainChannel.url,
-          },
-        ]);
-      }
-
-      // 🔹 Try Again → single row
+  
+      // 🔄 Try Again button
       keyboard.push([{ text: '🔄 Try Again', callback_data: 'check_join' }]);
-
+  
       await ctx.replyWithAnimation(
         'CgACAgUAAxkBAAMaaTcPME2k0MGOdKyHpwEProcoi_8AAmYZAALK8rlVtT1IxIOSGeo2BA',
         {
           caption:
             `Hi ${ctx.from.first_name},\n\n` +
-            `<b>Intha channel la join pannunga</b>\n\n` +
-            `Movies direct-ah channel-la post pannuvom.\n` +
-            `Updates miss pannaama irukka join pannunga.\n\n` +
-            `👇 Keela irukkura button click pannunga`,
+            `<b>Innum sila channel la join pannanum</b>\n\n` +
+            `Movies & updates miss aagama irukka\n` +
+            `👇 keela irukkura channel la join pannunga`,
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: keyboard,
           },
         },
       );
-
+  
       return false;
     } catch (err) {
       console.error('checkSubscription error:', err.message);
       return false;
     }
   }
+  
 
   onModuleInit() {
     // this.bot.on('message', async (ctx) => {
