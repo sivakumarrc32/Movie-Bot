@@ -46,6 +46,9 @@ export class MovieBotService implements OnModuleInit {
   async loadBotUrl() {
     const data =await this.settingModel.findOne();
     if (data) {
+      console.log(data);
+      console.log(data.boturl, data.animeboturl);
+
       this.boturl = data.boturl || '';
       this.animeboturl = data.animeboturl || '';
     } else {
