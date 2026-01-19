@@ -12,6 +12,9 @@ import { ConfigService } from '@nestjs/config';
 import { User } from './user.schema';
 import { TempMessage } from './temp.schema';
 import { ratio } from 'fuzzball';
+import { Anime } from 'src/anime/anime.schema';
+import { RequestMovies } from './requestMovies.schema';
+import { Setting } from './settings.schema';
 // import { pay } from 'node_modules/telegraf/typings/button';
 
 type ChannelInfo = {
@@ -25,15 +28,32 @@ export class MovieBotService implements OnModuleInit {
   public bot: Telegraf;
   public ownerId: number;
   private PAGE_SIZE = 10;
+  private boturl = '';
+  private animeboturl = '';
 
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(TempMessage.name) private tempMessageModel: Model<TempMessage>,
+    @InjectModel(Anime.name) private animeModel: Model<Anime>,
+    @InjectModel(RequestMovies.name) private requestModel: Model<RequestMovies>,
+    @InjectModel(Setting.name) private settingModel: Model<Setting>,
     private configService: ConfigService,
   ) {
     this.bot = new Telegraf(this.configService.get('MOVIE_BOT_TOKEN')!);
     this.ownerId = 992923409;
+  }
+  async loadBotUrl() {
+    const data =await this.settingModel.findOne();
+    if (data) {
+      this.boturl = data.boturl || '';
+      this.animeboturl = data.animeboturl || '';
+    } else {
+       await this.settingModel.create({
+         boturl: this.boturl,
+         animeboturl: this.animeboturl
+       })
+    }
   }
 
   private checkOwner(ctx: any): boolean {
@@ -72,107 +92,30 @@ export class MovieBotService implements OnModuleInit {
     },
   ]; // 🔴 unga rendu channel usernames
 
-  // private async checkSubscription(ctx: any): Promise<boolean> {
-  //   try {
-  //     const notJoinedChannels: ChannelInfo[] = [];
-
-  //     // 🔍 Check each channel
-  //     for (const channel of this.channels) {
-  //       const member = await ctx.telegram.getChatMember(
-  //         channel.id,
-  //         ctx.from.id,
-  //       );
-
-  //       // ❌ Only if NOT joined
-  //       if (member.status === 'left') {
-  //         notJoinedChannels.push(channel);
-  //       }
-  //     }
-
-  //     // ✅ User joined all channels
-  //     if (notJoinedChannels.length === 0) {
-  //       return true;
-  //     }
-
-  //     // 🎯 Split buttons
-  //     const channel1And2 = notJoinedChannels
-  //       .filter((ch) => ch.text !== 'Main Channel')
-  //       .map((ch) => ({
-  //         text: ch.text,
-  //         url: ch.url,
-  //       }));
-
-  //     const mainChannel = notJoinedChannels.find(
-  //       (ch) => ch.text === 'Main Channel',
-  //     );
-
-  //     const keyboard: any[] = [];
-
-  //     // 🔹 Channel 1 & 2 → same row
-  //     if (channel1And2.length > 0) {
-  //       keyboard.push(channel1And2);
-  //     }
-
-  //     // 🔹 Main Channel → single row
-  //     if (mainChannel) {
-  //       keyboard.push([
-  //         {
-  //           text: mainChannel.text,
-  //           url: mainChannel.url,
-  //         },
-  //       ]);
-  //     }
-
-  //     // 🔹 Try Again → single row
-  //     keyboard.push([{ text: '🔄 Try Again', callback_data: 'check_join' }]);
-
-  //     await ctx.replyWithAnimation(
-  //       'CgACAgUAAxkBAAMaaTcPME2k0MGOdKyHpwEProcoi_8AAmYZAALK8rlVtT1IxIOSGeo2BA',
-  //       {
-  //         caption:
-  //           `Hi ${ctx.from.first_name},\n\n` +
-  //           `<b>Intha channel la join pannunga</b>\n\n` +
-  //           `Movies direct-ah channel-la post pannuvom.\n` +
-  //           `Updates miss pannaama irukka join pannunga.\n\n` +
-  //           `👇 Keela irukkura button click pannunga`,
-  //         parse_mode: 'HTML',
-  //         reply_markup: {
-  //           inline_keyboard: keyboard,
-  //         },
-  //       },
-  //     );
-
-  //     return false;
-  //   } catch (err) {
-  //     console.error('checkSubscription error:', err.message);
-  //     return false;
-  //   }
-  // }
-
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
       const notJoined: ChannelInfo[] = [];
-  
+
       // 🔍 Check join status
       for (const channel of this.channels) {
         const member = await ctx.telegram.getChatMember(
           channel.id,
           ctx.from.id,
         );
-  
+
         if (member.status === 'left' || member.status === 'kicked') {
           notJoined.push(channel);
         }
       }
-  
+
       // ✅ Already joined all
       if (notJoined.length === 0) {
         return true;
       }
-  
+
       // 🎯 Build buttons (2 per row)
       const keyboard: any[] = [];
-  
+
       for (let i = 0; i < notJoined.length; i += 2) {
         keyboard.push(
           notJoined.slice(i, i + 2).map((ch) => ({
@@ -181,10 +124,10 @@ export class MovieBotService implements OnModuleInit {
           })),
         );
       }
-  
+
       // 🔄 Try Again button
       keyboard.push([{ text: '🔄 Try Again', callback_data: 'check_join' }]);
-  
+
       await ctx.replyWithAnimation(
         'CgACAgUAAxkBAAMaaTcPME2k0MGOdKyHpwEProcoi_8AAmYZAALK8rlVtT1IxIOSGeo2BA',
         {
@@ -199,21 +142,21 @@ export class MovieBotService implements OnModuleInit {
           },
         },
       );
-  
+
       return false;
     } catch (err) {
       console.error('checkSubscription error:', err.message);
       return false;
     }
   }
-  
 
-  onModuleInit() {
+  async onModuleInit() {
     // this.bot.on('message', async (ctx) => {
     //   const data = ctx.message;
     //   await ctx.reply(`Received message: ${JSON.stringify(data)}`);
     // });
     // this.bot.start((ctx) => this.start(ctx));
+    await this.loadBotUrl();
     this.bot.start(async (ctx) => {
       try {
         await this.reactMessage(ctx);
@@ -405,120 +348,67 @@ export class MovieBotService implements OnModuleInit {
     //   'CAACAgUAAxkBAAMFaSc8IasIRuuXn1VeS6izQIULISAAAkYcAAKN_zlVtkSzXMfczYQ2BA',
     // );
     console.log('Checking 1');
-    // try {
-    //   const name = ctx.message.text.trim();
-    //   const movie = await this.movieModel.findOne({
-    //     name: { $regex: name, $options: 'i' },
-    //   });
-
-    //   console.log('Checking 2', movie);
-
-    //   if (!movie) {
-    //     // await ctx.deleteMessage(anime.message_id);
-    //     const msg = await ctx.reply(
-    //       `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Movie is not Available in My Database.</b>\n\n<b>Movie Name Must be in Correct Format</b>\n\n<b><u>Examples for Typing</u></b>\n 1.(Web Series Name) S01 or (Web Series Name) S02 \n2. (Movie Name) \n3. (Web Series Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Movie Available in our bot Using <b> List of Movies</b> </i> \n\n <i>If the Movie is not in the List. Kindly Contact the Admin Using <b>Request Movie</b></i>`,
-    //       {
-    //         parse_mode: 'HTML',
-    //         reply_markup: {
-    //           inline_keyboard: [
-    //             [
-    //               {
-    //                 text: 'Request Movie',
-    //                 url: 'https://t.me/+JH-KR5ZMJUQyNzI1',
-    //               },
-    //               {
-    //                 text: 'List of Movies',
-    //                 callback_data: 'list',
-    //               },
-    //             ],
-    //           ],
-    //         },
-    //       },
-    //     );
-    //     await this.tempMessageModel.create({
-    //       chatId: ctx.chat.id,
-    //       messageId: msg.message_id,
-    //       expireAt: this.expireAt,
-    //     });
-    //     return;
-    //   }
-
-    //   const sentMessages: { chatId: number; messageId: number }[] = [];
-
-    //   // Poster
-    //   if (movie.poster?.chatId && movie.poster?.messageId) {
-    //     const posterMsg = await ctx.telegram.copyMessage(
-    //       ctx.chat.id,
-    //       movie.poster.chatId,
-    //       movie.poster.messageId,
-    //     );
-    //     sentMessages.push({
-    //       chatId: ctx.chat.id,
-    //       messageId: posterMsg.message_id,
-    //     });
-    //   }
-
-    //   // // Files
-    //   // for (const file of movie.files) {
-    //   //   const fileMsg = await ctx.telegram.forwardMessage(
-    //   //     ctx.chat.id,
-    //   //     file.chatId,
-    //   //     file.messageId,
-    //   //   );
-    //   //   sentMessages.push({
-    //   //     chatId: ctx.chat.id,
-    //   //     messageId: fileMsg.message_id,
-    //   //   });
-    //   // }
-
-    //   await this.sendEpisodePage(ctx, movie, 0);
-
-    //   // await ctx.deleteMessage(anime.message_id);
-
-    //   const expireAt = new Date(Date.now() + 5 * 60 * 1000);
-
-    //   for (const msg of sentMessages) {
-    //     await this.tempMessageModel.create({
-    //       chatId: msg.chatId,
-    //       messageId: msg.messageId,
-    //       userId: ctx.from.id,
-    //       expireAt,
-    //     });
-    //     console.log('message saved');
-    //   }
-    // } catch (err) {
-    //   console.error('Movie search error:', err.message);
-    // }
 
     try {
       const rawText = ctx.message.text.trim();
+      // const year = rawText.match(/\d{4}/);
 
-      // 🟢 extract year
+      // // 🟢 extract year
       const yearMatch = rawText.match(/\b\d{4}\b/);
       const year = yearMatch ? Number(yearMatch[0]) : null;
 
-      // const sentMessages: { chatId: number; messageId: number }[] = [];
+      const searchName = rawText;
+      const splittedMovieName = searchName.split(' ');
+      if (
+        splittedMovieName.includes('Season') ||
+        splittedMovieName.includes('season')
+      ) {
+        const WrongMovieNameMsg = await ctx.reply(
+          `<blockquote><b>❌ Please Don't Use Season or season</b></blockquote>\n\n <b>Example:</b> \nGame of Thrones S01✅,\nGame of Thrones S02✅`,
+          {
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: 'Rules',
+                    callback_data: 'help',
+                  },
+                ],
+              ],
+            },
+            reply_to_message_id: ctx.message.message_id,
+          },
+        );
 
-      // 🟢 remove year from name
-      const cleanedName = rawText
-        .replace(/\b\d{4}\b/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+        await this.tempMessageModel.create({
+          chatId: WrongMovieNameMsg.chat.id,
+          messageId: WrongMovieNameMsg.message_id,
+          userId: ctx.from.id,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
+        });
+        return;
+      }
 
-      console.log('RAW:', rawText);
-      console.log('YEAR:', year);
-      console.log('CLEAN NAME:', cleanedName);
+      const query: { name: { $regex: any; $options: string }; year?: number } =
+        {
+          name: { $regex: searchName, $options: 'i' },
+        };
 
-      // 🟡 find possible movies
-      const movies = await this.movieModel.find({
-        name: { $regex: cleanedName, $options: 'i' },
-        ...(year ? { year } : {}),
-      });
+      if (year) {
+        query.year = year;
+      }
 
-      console.log('FOUND MOVIES:', movies.length);
+      const allMovies = await this.movieModel.find(query);
+      const allAnimes = await this.animeModel.find(query);
+      console.log(`🔴 allMovies - ${allMovies.length}`);
+      console.log(`🔴 allAnimes - ${allAnimes.length}`);
 
-      // ❌ no movie
-      if (movies.length === 0) {
+      const movieMatches = await this.findTopMatches(searchName, allMovies);
+      const animeMatches = await this.findTopMatches(searchName, allAnimes);
+
+      // // ❌ no movie
+      if (allMovies.length === 0 && allAnimes.length === 0) {
         const msg = await ctx.reply(
           `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Movie is not Available in My Database.</b>\n\n<b>Movie Name Must be in Correct Format</b>\n\n<b><u>Examples for Typing</u></b>\n 1.(Web Series Name) S01 or (Web Series Name) S02 \n2. (Movie Name) \n3. (Web Series Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Movie Available in our bot Using <b> List of Movies</b> </i> \n\n <i>If the Movie is not in the List. Kindly Contact the Admin Using <b>Request Movie</b></i>`,
           {
@@ -527,18 +417,25 @@ export class MovieBotService implements OnModuleInit {
               inline_keyboard: [
                 [
                   {
+                    text: 'Check Spelling in Google',
+                    url: `https://www.google.com/search?q=${searchName}`,
+                  },
+                ],
+                [
+                  {
                     text: 'Request Movie',
                     url: 'https://t.me/+JH-KR5ZMJUQyNzI1',
-                  },
-                  {
-                    text: 'List of Movies',
-                    callback_data: 'list',
                   },
                 ],
               ],
             },
           },
         );
+        await this.requestModel.create({
+          name: searchName,
+          userId: ctx.from.id.toString(),
+          userName: ctx.from.first_name || ctx.from.username,
+        });
         await this.tempMessageModel.create({
           chatId: ctx.chat.id,
           messageId: msg.message_id,
@@ -547,14 +444,111 @@ export class MovieBotService implements OnModuleInit {
         return;
       }
 
-      // ✅ only one movie
-      if (movies.length === 1) {
-        //Poster
-        if (movies[0].poster?.chatId && movies[0].poster?.messageId) {
+      let finalMovieMatches = movieMatches;
+      let finalAnimeMatches = animeMatches;
+
+      // 🔁 fallback: fuzzy empty but DB has data
+      if (finalMovieMatches.length === 0 && allMovies.length > 0) {
+        finalMovieMatches = allMovies.map((doc) => ({ doc, score: 0 }));
+      }
+
+      if (finalAnimeMatches.length === 0 && allAnimes.length > 0) {
+        finalAnimeMatches = allAnimes.map((doc) => ({ doc, score: 0 }));
+      }
+
+      if (finalMovieMatches.length > 1 || finalAnimeMatches.length > 1) {
+        await ctx.react('🤔');
+
+        let text = `<b>Multiple Results Found</b>\n`;
+        text += `<i>Please choose the exact Movie or Anime</i>\n\n`;
+
+        let count = 1;
+
+        if (finalMovieMatches.length) {
+          text += `🎬 <b>Movies</b>\n`;
+          for (const m of finalMovieMatches) {
+            const enc = Buffer.from(m.doc.name, 'utf-8').toString('base64');
+            const link = `https://t.me/${this.boturl}?start=${enc}`;
+            const Audio = await this.ExtractAudio(m.doc);
+            const Quality = await this.ExtractQuality(m.doc);
+            text += `${count}.┎<b>${this.escapeHtml(
+              m.doc.name,
+            )}</b> → <a href="${link}">Click Here</a>\n`;
+            text += `   ┃\n`;
+            text += `   ┠ <b>Audio : <i>${this.escapeHtml(
+              Audio || 'Unknown',
+            )}</i></b>\n`;
+            text += `   ┃\n`;
+            text += `   ┖ <b>Quality : <i>${this.escapeHtml(
+              Quality || 'Unknown',
+            )}</i></b>\n\n`;
+            count++;
+          }
+          text += `\n`;
+        }
+
+        if (finalAnimeMatches.length) {
+          text += `🎌 <b>Animes</b>\n`;
+          for (const a of finalAnimeMatches) {
+            const enc = Buffer.from(a.doc.name, 'utf-8').toString('base64');
+            const link = `https://t.me/${this.animeboturl}?start=${enc}`;
+            const Audio = await this.ExtractAudio(a.doc);
+            const Quality = await this.ExtractQuality(a.doc);
+            text += `${count}. ┎ <b>${this.escapeHtml(
+              a.doc.name,
+            )}</b> ➻ <a href="${link}">Click Here</a>\n`;
+            text += `   ┃\n`;
+            text += `   ┠  <b>Audio : <i>${this.escapeHtml(
+              Audio || 'Unknown',
+            )}</i></b>\n`;
+            text += `   ┃\n`;
+            text += `   ┖ <b>Quality : <i>${this.escapeHtml(
+              Quality || 'Unknown',
+            )}</i></b>\n\n`;
+            count++;
+          }
+        }
+
+        const sent = await ctx.reply(text, {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+          reply_to_message_id: ctx.message.message_id,
+        });
+
+        await this.tempMessageModel.create({
+          chatId: sent.chat.id,
+          messageId: sent.message_id,
+          userId: ctx.from.id,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
+        });
+
+        const warningMsg = await ctx.reply(
+          `
+  <b>⚠️ Warning</b>\n
+  <blockquote>Due to Copyright issues, Message will be deleted after 5 minutes.\n <b> Forward the message to Saved Message</b>.</blockquote>`,
+          {
+            parse_mode: 'HTML',
+            reply_to_message_id: ctx.message.message_id,
+          },
+        );
+
+        await this.tempMessageModel.create({
+          chatId: warningMsg.chat.id,
+          messageId: warningMsg.message_id,
+          userId: ctx.from.id,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
+        });
+
+        return;
+      }
+
+      if (finalMovieMatches.length === 1) {
+        const movie = finalMovieMatches[0].doc;
+        if (movie.poster?.chatId && movie.poster?.messageId) {
           const posterMsg = await ctx.telegram.copyMessage(
             ctx.chat.id,
-            movies[0].poster.chatId,
-            movies[0].poster.messageId,
+            movie.poster.chatId,
+            movie.poster.messageId,
           );
           await this.tempMessageModel.create({
             chatId: ctx.chat.id,
@@ -562,37 +556,16 @@ export class MovieBotService implements OnModuleInit {
             expireAt: new Date(Date.now() + 5 * 60 * 1000),
           });
         }
-        return this.sendEpisodePage(ctx, movies[0], 0);
+        return this.sendEpisodePage(ctx, movie, 0);
       }
 
-      // 🔥 FUZZY MATCH (multiple movies)
-      let bestMatch: Movie | null = null;
-      let bestScore = 0;
-
-      for (const movie of movies) {
-        let score = ratio(cleanedName.toLowerCase(), movie.name.toLowerCase());
-
-        // 🎯 bonus if year matches
-        if (year && movie.name.includes(String(year))) {
-          score += 20;
-        }
-
-        if (score > bestScore) {
-          bestScore = score;
-          bestMatch = movie;
-        }
-      }
-
-      console.log('BEST MATCH:', bestMatch?.name, bestScore);
-
-      // ✅ confident match
-      if (bestMatch && bestScore >= 90) {
-        //Poster
-        if (bestMatch.poster?.chatId && bestMatch.poster?.messageId) {
+      if (finalAnimeMatches.length === 1) {
+        const anime = finalAnimeMatches[0].doc;
+        if (anime.poster?.chatId && anime.poster?.messageId) {
           const posterMsg = await ctx.telegram.copyMessage(
             ctx.chat.id,
-            bestMatch.poster.chatId,
-            bestMatch.poster.messageId,
+            anime.poster.chatId,
+            anime.poster.messageId,
           );
           await this.tempMessageModel.create({
             chatId: ctx.chat.id,
@@ -600,126 +573,14 @@ export class MovieBotService implements OnModuleInit {
             expireAt: new Date(Date.now() + 5 * 60 * 1000),
           });
         }
-        return this.sendEpisodePage(ctx, bestMatch, 0);
+        return this.sendEpisodePage(ctx, anime, 0);
       }
-
-      // for (const msg of sentMessages) {
-      //   await this.tempMessageModel.create({
-      //     chatId: msg.chatId,
-      //     messageId: msg.messageId,
-      //     userId: ctx.from.id,
-      //     expireAt,
-      //   });
-      // }
-
-      // ❌ show multiple list
-      let list = '';
-      movies.forEach((m) => {
-        list += `• <code>${m.name}</code>\n`;
-      });
-
-      const msg = await ctx.reply(`<b>Multiple movies found</b>\n\n${list}`, {
-        parse_mode: 'HTML',
-      });
-
-      await this.tempMessageModel.create({
-        chatId: msg.chat.id,
-        messageId: msg.message_id,
-        userId: ctx.from.id,
-        expireAt: this.expireAt,
-      });
     } catch (err) {
       console.error('sendMovie error:', err.message);
     }
   }
 
   async sendMovieName(ctx, name: string) {
-    // const anime = await ctx.replyWithAnimation(
-    //   'CAACAgUAAxkBAAMFaSc8IasIRuuXn1VeS6izQIULISAAAkYcAAKN_zlVtkSzXMfczYQ2BA',
-    // );
-
-    // try {
-    //   const movie = await this.movieModel.findOne({
-    //     name: { $regex: name, $options: 'i' },
-    //   });
-
-    //   if (!movie) {
-    //     // await ctx.deleteMessage(anime.message_id);
-    //     const msg = await ctx.reply(
-    //       `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Movie is not Available in My Database.</b>\n\n<b>Movie Name Must be in Correct Format</b>\n\n<b><u>Examples for Typing</u></b>\n 1.(Web Series Name) S01 or (Web Series Name) S02 \n2. (Movie Name) \n3. (Web Series Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Movie Available in our bot Using <b> List of Movies</b> </i> \n\n <i>If the Movie is not in the List. Kindly Contact the Admin Using <b>Request Movie</b></i>`,
-    //       {
-    //         parse_mode: 'HTML',
-    //         reply_markup: {
-    //           inline_keyboard: [
-    //             [
-    //               {
-    //                 text: 'Request Movie',
-    //                 url: 'https://t.me/+JH-KR5ZMJUQyNzI1',
-    //               },
-    //               {
-    //                 text: 'List of Movies',
-    //                 callback_data: 'list',
-    //               },
-    //             ],
-    //           ],
-    //         },
-    //       },
-    //     );
-    //     await this.tempMessageModel.create({
-    //       chatId: ctx.chat.id,
-    //       messageId: msg.message_id,
-    //       expireAt: this.expireAt,
-    //     });
-    //     return;
-    //   }
-
-    //   const sentMessages: { chatId: number; messageId: number }[] = [];
-
-    //   // Poster
-    //   if (movie.poster?.chatId && movie.poster?.messageId) {
-    //     const posterMsg = await ctx.telegram.copyMessage(
-    //       ctx.chat.id,
-    //       movie.poster.chatId,
-    //       movie.poster.messageId,
-    //     );
-    //     sentMessages.push({
-    //       chatId: ctx.chat.id,
-    //       messageId: posterMsg.message_id,
-    //     });
-    //   }
-
-    //   // // Files
-    //   // for (const file of movie.files) {
-    //   //   const fileMsg = await ctx.telegram.forwardMessage(
-    //   //     ctx.chat.id,
-    //   //     file.chatId,
-    //   //     file.messageId,
-    //   //   );
-    //   //   sentMessages.push({
-    //   //     chatId: ctx.chat.id,
-    //   //     messageId: fileMsg.message_id,
-    //   //   });
-    //   // }
-
-    //   await this.sendEpisodePage(ctx, movie, 0);
-
-    //   // await ctx.deleteMessage(anime.message_id);
-
-    //   const expireAt = new Date(Date.now() + 5 * 60 * 1000);
-
-    //   for (const msg of sentMessages) {
-    //     await this.tempMessageModel.create({
-    //       chatId: msg.chatId,
-    //       messageId: msg.messageId,
-    //       userId: ctx.from.id,
-    //       expireAt,
-    //     });
-    //     console.log('message saved');
-    //   }
-    // } catch (err) {
-    //   console.error('Movie search error:', err.message);
-    // }
-
     try {
       const searchText = name.trim().toLowerCase();
 
@@ -1175,5 +1036,66 @@ export class MovieBotService implements OnModuleInit {
     } catch (err) {
       console.error('Error reacting:', err);
     }
+  }
+
+  async findTopMatches(input, docs, minScore = 90) {
+    return docs
+      .map((doc) => ({
+        doc,
+        score: ratio(input.toLowerCase(), doc.name.toLowerCase()),
+      }))
+      .filter((r) => r.score >= minScore)
+      .sort((a, b) => b.score - a.score);
+  }
+
+  async ExtractAudio(caption) {
+    try {
+      // if (!caption || typeof caption !== "string") {
+      //   return ""; // ❌ no unknown, no null
+      // }
+
+      const lines = caption.caption.split('\n');
+
+      for (const line of lines) {
+        // matches: 🔈 Audio : Tamil + Multi
+        const match = line.match(/audio\s*:\s*(.+)/i);
+        if (match) {
+          return match[1].trim();
+        }
+      }
+
+      return ''; // ❌ still no unknown
+    } catch (e) {
+      console.log(e.message);
+      return null;
+    }
+  }
+
+  async ExtractQuality(caption) {
+    try {
+      const lines = caption.caption.split('\n');
+      for (const line of lines) {
+        const match = line.match(/Quality\s*:\s*(.+)/i);
+        if (match) {
+          return match[1].trim();
+        }
+      }
+      return ''; // ❌ still no unknown
+    } catch (e) {
+      console.log(e.message);
+      return null;
+    }
+  }
+
+  escapeHtml(text) {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+  escapeRegex(text){
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 }
