@@ -30,6 +30,7 @@ export class MovieBotService implements OnModuleInit {
   private PAGE_SIZE = 10;
   private boturl = '';
   private animeboturl = '';
+  private botStarted = false;
 
   constructor(
     @InjectModel(Movie.name) private movieModel: Model<Movie>,
@@ -46,9 +47,6 @@ export class MovieBotService implements OnModuleInit {
   async loadBotUrl() {
     const data = await this.settingModel.findOne();
     if (data) {
-      console.log(data);
-      console.log(data.boturl, data.animeboturl);
-
       this.boturl = data.boturl || '';
       this.animeboturl = data.animeboturl || '';
     } else {
@@ -213,10 +211,19 @@ export class MovieBotService implements OnModuleInit {
     this.bot.action(/^(anime_all|anime_file|anime_page)_/, (ctx) =>
       this.handleAnimeEpisodeSelection(ctx),
     );
-    
+
     this.bot.action('noop', async (ctx) => {
       await ctx.answerCbQuery('❌ This is Not a Button');
     });
+
+    // this.bot.launch();
+    // if (!this.botStarted) {
+    //   this.bot.launch();
+    //   this.botStarted = true;
+
+    //   process.once('SIGINT', () => this.bot.stop('SIGINT'));
+    //   process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
+    // }
   }
 
   expireAt = new Date(Date.now() + 2 * 60 * 1000);
@@ -563,6 +570,7 @@ export class MovieBotService implements OnModuleInit {
             expireAt: new Date(Date.now() + 5 * 60 * 1000),
           });
         }
+        console.log('Sending Movie Episode Page');
         return this.sendEpisodePage(ctx, movie, 0);
       }
 
@@ -580,6 +588,7 @@ export class MovieBotService implements OnModuleInit {
             expireAt: new Date(Date.now() + 5 * 60 * 1000),
           });
         }
+        console.log('Sending Anime Episode Page');
         return this.sendAnimeEpisodePage(ctx, anime, 0);
       }
     } catch (err) {
@@ -1104,21 +1113,21 @@ export class MovieBotService implements OnModuleInit {
     }
   }
 
-  private async sendAnimeEpisodePage(ctx, movie, page: number) {
+  private async sendAnimeEpisodePage(ctx, anime, page: number) {
     const start = page * this.PAGE_SIZE;
     const end = start + this.PAGE_SIZE;
 
     // 🔴 CHANGE 1: reverse files (DB affect aagadhu)
-    const reversedFiles = [...movie.files].reverse();
+    const reversedFiles = [...anime.files].reverse();
     const files = reversedFiles.slice(start, end);
-    const totalPages = Math.ceil(movie.files.length / this.PAGE_SIZE);
+    const totalPages = Math.ceil(anime.files.length / this.PAGE_SIZE);
 
     const buttons: any[] = [];
 
     // Send All button only in first page
     if (page === 0) {
       buttons.push([
-        { text: '📥 Send All', callback_data: `all_${movie._id}` },
+        { text: '📥 Send All', callback_data: `anime_all_${anime._id}` },
       ]);
     }
 
@@ -1128,12 +1137,12 @@ export class MovieBotService implements OnModuleInit {
         .replace(/\.mkv$/i, '');
       const fileSize = file.size || '';
       // 🔴 CHANGE 2: correct index for reversed order
-      const originalIndex = movie.files.length - 1 - (start + idx);
+      const originalIndex = anime.files.length - 1 - (start + idx);
 
       buttons.push([
         {
           text: `[${fileSize}] - ${fileName}`,
-          callback_data: `file_${movie._id}_${originalIndex}`,
+          callback_data: `anime_file_${anime._id}_${originalIndex}`,
         },
       ]);
     });
@@ -1143,18 +1152,18 @@ export class MovieBotService implements OnModuleInit {
     if (page > 0) {
       navButtons.push({
         text: '⬅️ Prev',
-        callback_data: `page_${movie._id}_${page - 1}`,
+        callback_data: `anime_page_${anime._id}_${page - 1}`,
       });
     }
     navButtons.push({
       text: `Pages ${page + 1}/${totalPages}`,
       callback_data: 'noop',
     });
-    if (end < movie.files.length) {
+    if (end < anime.files.length) {
       // console.log('end < anime.files.length', end, movie.files.length);
       navButtons.push({
         text: 'Next ➡️',
-        callback_data: `page_${movie._id}_${page + 1}`,
+        callback_data: `page_${anime._id}_${page + 1}`,
       });
     }
     if (navButtons.length) buttons.push(navButtons);
@@ -1162,7 +1171,7 @@ export class MovieBotService implements OnModuleInit {
     if (ctx.updateType === 'callback_query') {
       // edit the inline keyboard when callback
       await ctx.editMessageText(
-        `<b>${movie.name} Movie (Page ${page + 1})</b>`,
+        `<b>${anime.name} Anime (Page ${page + 1})</b>`,
         {
           parse_mode: 'HTML',
           reply_markup: { inline_keyboard: buttons },
@@ -1171,7 +1180,7 @@ export class MovieBotService implements OnModuleInit {
     } else {
       // normal reply when user types anime name
       const msg = await ctx.reply(
-        `<b>${movie.name} Movie (Page ${page + 1})</b>`,
+        `<b>${anime.name} Anime (Page ${page + 1})</b>`,
         {
           parse_mode: 'HTML',
           reply_markup: { inline_keyboard: buttons },
