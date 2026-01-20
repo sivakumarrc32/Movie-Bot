@@ -44,7 +44,7 @@ export class MovieBotService implements OnModuleInit {
     this.ownerId = 992923409;
   }
   async loadBotUrl() {
-    const data =await this.settingModel.findOne();
+    const data = await this.settingModel.findOne();
     if (data) {
       console.log(data);
       console.log(data.boturl, data.animeboturl);
@@ -52,10 +52,10 @@ export class MovieBotService implements OnModuleInit {
       this.boturl = data.boturl || '';
       this.animeboturl = data.animeboturl || '';
     } else {
-       await this.settingModel.create({
-         boturl: this.boturl,
-         animeboturl: this.animeboturl
-       })
+      await this.settingModel.create({
+        boturl: this.boturl,
+        animeboturl: this.animeboturl,
+      });
     }
   }
 
@@ -210,6 +210,10 @@ export class MovieBotService implements OnModuleInit {
     this.bot.action(/^(all|file|page)_/, (ctx) =>
       this.handleEpisodeSelection(ctx),
     );
+    this.bot.action(/^(anime_all|anime_file|anime_page)_/, (ctx) =>
+      this.handleAnimeEpisodeSelection(ctx),
+    );
+    
     this.bot.action('noop', async (ctx) => {
       await ctx.answerCbQuery('❌ This is Not a Button');
     });
@@ -576,7 +580,7 @@ export class MovieBotService implements OnModuleInit {
             expireAt: new Date(Date.now() + 5 * 60 * 1000),
           });
         }
-        return this.sendEpisodePage(ctx, anime, 0);
+        return this.sendAnimeEpisodePage(ctx, anime, 0);
       }
     } catch (err) {
       console.error('sendMovie error:', err.message);
@@ -838,6 +842,7 @@ export class MovieBotService implements OnModuleInit {
         const page = parseInt(parts[2], 10);
 
         const movie = await this.movieModel.findById(movieId);
+
         if (!movie) return ctx.reply('❌ Movie not found.');
 
         // show the requested page
@@ -920,7 +925,186 @@ export class MovieBotService implements OnModuleInit {
     }
   }
 
+  async handleAnimeEpisodeSelection(ctx) {
+    try {
+      await ctx.answerCbQuery(); // hide "loading" in Telegram
+
+      const data = ctx.callbackQuery.data as string;
+
+      if (data.startsWith('anime_page_')) {
+        console.log('page_', data);
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const page = parseInt(parts[2], 10);
+
+        const movie = await this.animeModel.findById(movieId);
+
+        if (!movie) return await ctx.reply('❌ Movie not found.');
+
+        // show the requested page
+        return this.sendAnimeEpisodePage(ctx, movie, page);
+      }
+
+      if (data.startsWith('anime_all_')) {
+        const movieId = data.split('_')[1];
+        const movie = await this.animeModel.findById(movieId);
+
+        if (!movie) return await ctx.reply('❌ Movie not found.');
+
+        for (const file of movie.files) {
+          const message = await ctx.telegram.copyMessage(
+            ctx.chat.id,
+            file.chatId,
+            file.messageId,
+          );
+
+          await this.tempMessageModel.create({
+            userId: ctx.from.id,
+            messageId: message.message_id,
+            chatId: ctx.chat.id,
+            expireAt: new Date(Date.now() + 5 * 60 * 1000),
+          });
+        }
+        const successMsg = await ctx.reply(
+          `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
+          { parse_mode: 'HTML' },
+        );
+
+        await this.tempMessageModel.create({
+          userId: ctx.from.id,
+          messageId: successMsg.message_id,
+          chatId: ctx.chat.id,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
+        });
+        return;
+      }
+
+      if (data.startsWith('anime_file_')) {
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const idx = parseInt(parts[2], 10);
+
+        const movie = await this.animeModel.findById(movieId);
+        if (!movie) return ctx.reply('❌ Movie not found.');
+
+        const file = movie.files[idx];
+        if (!file) return ctx.reply('❌ File not found.');
+
+        const message = await ctx.telegram.copyMessage(
+          ctx.chat.id,
+          file.chatId,
+          file.messageId,
+        );
+
+        await this.tempMessageModel.create({
+          userId: ctx.from.id,
+          messageId: message.message_id,
+          chatId: ctx.chat.id,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
+        });
+
+        const successMsg = await ctx.reply(
+          `✅ <b>Movie "${movie.name}" sent successfully!</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
+          { parse_mode: 'HTML' },
+        );
+
+        await this.tempMessageModel.create({
+          userId: ctx.from.id,
+          messageId: successMsg.message_id,
+          chatId: ctx.chat.id,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
+        });
+        return;
+      }
+    } catch (err) {
+      console.error('Error sending episode:', err.message);
+    }
+  }
+
   private async sendEpisodePage(ctx, movie, page: number) {
+    const start = page * this.PAGE_SIZE;
+    const end = start + this.PAGE_SIZE;
+
+    // 🔴 CHANGE 1: reverse files (DB affect aagadhu)
+    const reversedFiles = [...movie.files].reverse();
+    const files = reversedFiles.slice(start, end);
+    const totalPages = Math.ceil(movie.files.length / this.PAGE_SIZE);
+
+    const buttons: any[] = [];
+
+    // Send All button only in first page
+    if (page === 0) {
+      buttons.push([
+        { text: '📥 Send All', callback_data: `all_${movie._id}` },
+      ]);
+    }
+
+    files.forEach((file, idx) => {
+      const fileName = file.fileName
+        .replace(/^@[^-_:]+[-_:]+[_]*\s*/, '') // remove @BotName prefixes with - or _
+        .replace(/\.mkv$/i, '');
+      const fileSize = file.size || '';
+      // 🔴 CHANGE 2: correct index for reversed order
+      const originalIndex = movie.files.length - 1 - (start + idx);
+
+      buttons.push([
+        {
+          text: `[${fileSize}] - ${fileName}`,
+          callback_data: `file_${movie._id}_${originalIndex}`,
+        },
+      ]);
+    });
+
+    // Pagination buttons
+    const navButtons: any[] = [];
+    if (page > 0) {
+      navButtons.push({
+        text: '⬅️ Prev',
+        callback_data: `page_${movie._id}_${page - 1}`,
+      });
+    }
+    navButtons.push({
+      text: `Pages ${page + 1}/${totalPages}`,
+      callback_data: 'noop',
+    });
+    if (end < movie.files.length) {
+      // console.log('end < anime.files.length', end, movie.files.length);
+      navButtons.push({
+        text: 'Next ➡️',
+        callback_data: `page_${movie._id}_${page + 1}`,
+      });
+    }
+    if (navButtons.length) buttons.push(navButtons);
+
+    if (ctx.updateType === 'callback_query') {
+      // edit the inline keyboard when callback
+      await ctx.editMessageText(
+        `<b>${movie.name} Movie (Page ${page + 1})</b>`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: buttons },
+        },
+      );
+    } else {
+      // normal reply when user types anime name
+      const msg = await ctx.reply(
+        `<b>${movie.name} Movie (Page ${page + 1})</b>`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: buttons },
+        },
+      );
+
+      await this.tempMessageModel.create({
+        userId: ctx.from.id,
+        messageId: msg.message_id,
+        chatId: ctx.chat.id,
+        expireAt: new Date(Date.now() + 5 * 60 * 1000),
+      });
+    }
+  }
+
+  private async sendAnimeEpisodePage(ctx, movie, page: number) {
     const start = page * this.PAGE_SIZE;
     const end = start + this.PAGE_SIZE;
 
@@ -1092,13 +1276,13 @@ export class MovieBotService implements OnModuleInit {
 
   escapeHtml(text) {
     return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
-  escapeRegex(text){
-    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  escapeRegex(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 }
