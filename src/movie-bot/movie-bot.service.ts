@@ -941,10 +941,9 @@ export class MovieBotService implements OnModuleInit {
       const data = ctx.callbackQuery.data as string;
 
       if (data.startsWith('anime_page_')) {
-        console.log('page_', data);
         const parts = data.split('_');
-        const movieId = parts[1];
-        const page = parseInt(parts[2], 10);
+        const movieId = parts[2];
+        const page = parseInt(parts[3], 10);
 
         const movie = await this.animeModel.findById(movieId);
 
@@ -955,7 +954,7 @@ export class MovieBotService implements OnModuleInit {
       }
 
       if (data.startsWith('anime_all_')) {
-        const movieId = data.split('_')[1];
+        const movieId = data.split('_')[2];
         const movie = await this.animeModel.findById(movieId);
 
         if (!movie) return await ctx.reply('❌ Movie not found.');
@@ -990,8 +989,8 @@ export class MovieBotService implements OnModuleInit {
 
       if (data.startsWith('anime_file_')) {
         const parts = data.split('_');
-        const movieId = parts[1];
-        const idx = parseInt(parts[2], 10);
+        const movieId = parts[2];
+        const idx = parseInt(parts[3], 10);
 
         const movie = await this.animeModel.findById(movieId);
         if (!movie) return ctx.reply('❌ Movie not found.');
