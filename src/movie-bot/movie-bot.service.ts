@@ -930,7 +930,7 @@ export class MovieBotService implements OnModuleInit {
         return;
       }
     } catch (err) {
-      console.error('Error sending episode:', err.message);
+      console.error('Error while sending handle movie episode:', err.message);
     }
   }
 
@@ -1026,173 +1026,181 @@ export class MovieBotService implements OnModuleInit {
         return;
       }
     } catch (err) {
-      console.error('Error sending episode:', err.message);
+      console.error('Error while sending handle anime episode:', err.message);
     }
   }
 
   private async sendEpisodePage(ctx, movie, page: number) {
-    const start = page * this.PAGE_SIZE;
-    const end = start + this.PAGE_SIZE;
+    try {
+      const start = page * this.PAGE_SIZE;
+      const end = start + this.PAGE_SIZE;
 
-    // 🔴 CHANGE 1: reverse files (DB affect aagadhu)
-    const reversedFiles = [...movie.files].reverse();
-    const files = reversedFiles.slice(start, end);
-    const totalPages = Math.ceil(movie.files.length / this.PAGE_SIZE);
+      // 🔴 CHANGE 1: reverse files (DB affect aagadhu)
+      const reversedFiles = [...movie.files].reverse();
+      const files = reversedFiles.slice(start, end);
+      const totalPages = Math.ceil(movie.files.length / this.PAGE_SIZE);
 
-    const buttons: any[] = [];
+      const buttons: any[] = [];
 
-    // Send All button only in first page
-    if (page === 0) {
-      buttons.push([
-        { text: '📥 Send All', callback_data: `all_${movie._id}` },
-      ]);
-    }
+      // Send All button only in first page
+      if (page === 0) {
+        buttons.push([
+          { text: '📥 Send All', callback_data: `all_${movie._id}` },
+        ]);
+      }
 
-    files.forEach((file, idx) => {
-      const fileName = file.fileName
-        .replace(/^@[^-_:]+[-_:]+[_]*\s*/, '') // remove @BotName prefixes with - or _
-        .replace(/\.mkv$/i, '');
-      const fileSize = file.size || '';
-      // 🔴 CHANGE 2: correct index for reversed order
-      const originalIndex = movie.files.length - 1 - (start + idx);
+      files.forEach((file, idx) => {
+        const fileName = file.fileName
+          .replace(/^@[^-_:]+[-_:]+[_]*\s*/, '') // remove @BotName prefixes with - or _
+          .replace(/\.mkv$/i, '');
+        const fileSize = file.size || '';
+        // 🔴 CHANGE 2: correct index for reversed order
+        const originalIndex = movie.files.length - 1 - (start + idx);
 
-      buttons.push([
-        {
-          text: `[${fileSize}] - ${fileName}`,
-          callback_data: `file_${movie._id}_${originalIndex}`,
-        },
-      ]);
-    });
+        buttons.push([
+          {
+            text: `[${fileSize}] - ${fileName}`,
+            callback_data: `file_${movie._id}_${originalIndex}`,
+          },
+        ]);
+      });
 
-    // Pagination buttons
-    const navButtons: any[] = [];
-    if (page > 0) {
+      // Pagination buttons
+      const navButtons: any[] = [];
+      if (page > 0) {
+        navButtons.push({
+          text: '⬅️ Prev',
+          callback_data: `page_${movie._id}_${page - 1}`,
+        });
+      }
       navButtons.push({
-        text: '⬅️ Prev',
-        callback_data: `page_${movie._id}_${page - 1}`,
+        text: `Pages ${page + 1}/${totalPages}`,
+        callback_data: 'noop',
       });
-    }
-    navButtons.push({
-      text: `Pages ${page + 1}/${totalPages}`,
-      callback_data: 'noop',
-    });
-    if (end < movie.files.length) {
-      // console.log('end < anime.files.length', end, movie.files.length);
-      navButtons.push({
-        text: 'Next ➡️',
-        callback_data: `page_${movie._id}_${page + 1}`,
-      });
-    }
-    if (navButtons.length) buttons.push(navButtons);
+      if (end < movie.files.length) {
+        // console.log('end < anime.files.length', end, movie.files.length);
+        navButtons.push({
+          text: 'Next ➡️',
+          callback_data: `page_${movie._id}_${page + 1}`,
+        });
+      }
+      if (navButtons.length) buttons.push(navButtons);
 
-    if (ctx.updateType === 'callback_query') {
-      // edit the inline keyboard when callback
-      await ctx.editMessageText(
-        `<b>${movie.name} Movie (Page ${page + 1})</b>`,
-        {
-          parse_mode: 'HTML',
-          reply_markup: { inline_keyboard: buttons },
-        },
-      );
-    } else {
-      // normal reply when user types anime name
-      const msg = await ctx.reply(
-        `<b>${movie.name} Movie (Page ${page + 1})</b>`,
-        {
-          parse_mode: 'HTML',
-          reply_markup: { inline_keyboard: buttons },
-        },
-      );
+      if (ctx.updateType === 'callback_query') {
+        // edit the inline keyboard when callback
+        await ctx.editMessageText(
+          `<b>${movie.name} Movie (Page ${page + 1})</b>`,
+          {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: buttons },
+          },
+        );
+      } else {
+        // normal reply when user types anime name
+        const msg = await ctx.reply(
+          `<b>${movie.name} Movie (Page ${page + 1})</b>`,
+          {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: buttons },
+          },
+        );
 
-      await this.tempMessageModel.create({
-        userId: ctx.from.id,
-        messageId: msg.message_id,
-        chatId: ctx.chat.id,
-        expireAt: new Date(Date.now() + 5 * 60 * 1000),
-      });
+        await this.tempMessageModel.create({
+          userId: ctx.from.id,
+          messageId: msg.message_id,
+          chatId: ctx.chat.id,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
+        });
+      }
+    } catch (err) {
+      console.error('Error sending episode page:', err.message);
     }
   }
 
   private async sendAnimeEpisodePage(ctx, anime, page: number) {
-    const start = page * this.PAGE_SIZE;
-    const end = start + this.PAGE_SIZE;
+    try {
+      const start = page * this.PAGE_SIZE;
+      const end = start + this.PAGE_SIZE;
 
-    // 🔴 CHANGE 1: reverse files (DB affect aagadhu)
-    const reversedFiles = [...anime.files].reverse();
-    const files = reversedFiles.slice(start, end);
-    const totalPages = Math.ceil(anime.files.length / this.PAGE_SIZE);
+      // 🔴 CHANGE 1: reverse files (DB affect aagadhu)
+      const reversedFiles = [...anime.files].reverse();
+      const files = reversedFiles.slice(start, end);
+      const totalPages = Math.ceil(anime.files.length / this.PAGE_SIZE);
 
-    const buttons: any[] = [];
+      const buttons: any[] = [];
 
-    // Send All button only in first page
-    if (page === 0) {
-      buttons.push([
-        { text: '📥 Send All', callback_data: `anime_all_${anime._id}` },
-      ]);
-    }
+      // Send All button only in first page
+      if (page === 0) {
+        buttons.push([
+          { text: '📥 Send All', callback_data: `anime_all_${anime._id}` },
+        ]);
+      }
 
-    files.forEach((file, idx) => {
-      const fileName = file.fileName
-        .replace(/^@[^-_:]+[-_:]+[_]*\s*/, '') // remove @BotName prefixes with - or _
-        .replace(/\.mkv$/i, '');
-      const fileSize = file.size || '';
-      // 🔴 CHANGE 2: correct index for reversed order
-      const originalIndex = anime.files.length - 1 - (start + idx);
+      files.forEach((file, idx) => {
+        const fileName = file.fileName
+          .replace(/^@[^-_:]+[-_:]+[_]*\s*/, '') // remove @BotName prefixes with - or _
+          .replace(/\.mkv$/i, '');
+        const fileSize = file.size || '';
+        // 🔴 CHANGE 2: correct index for reversed order
+        const originalIndex = anime.files.length - 1 - (start + idx);
 
-      buttons.push([
-        {
-          text: `[${fileSize}] - ${fileName}`,
-          callback_data: `anime_file_${anime._id}_${originalIndex}`,
-        },
-      ]);
-    });
+        buttons.push([
+          {
+            text: `[${fileSize}] - ${fileName}`,
+            callback_data: `anime_file_${anime._id}_${originalIndex}`,
+          },
+        ]);
+      });
 
-    // Pagination buttons
-    const navButtons: any[] = [];
-    if (page > 0) {
+      // Pagination buttons
+      const navButtons: any[] = [];
+      if (page > 0) {
+        navButtons.push({
+          text: '⬅️ Prev',
+          callback_data: `anime_page_${anime._id}_${page - 1}`,
+        });
+      }
       navButtons.push({
-        text: '⬅️ Prev',
-        callback_data: `anime_page_${anime._id}_${page - 1}`,
+        text: `Pages ${page + 1}/${totalPages}`,
+        callback_data: 'noop',
       });
-    }
-    navButtons.push({
-      text: `Pages ${page + 1}/${totalPages}`,
-      callback_data: 'noop',
-    });
-    if (end < anime.files.length) {
-      // console.log('end < anime.files.length', end, movie.files.length);
-      navButtons.push({
-        text: 'Next ➡️',
-        callback_data: `page_${anime._id}_${page + 1}`,
-      });
-    }
-    if (navButtons.length) buttons.push(navButtons);
+      if (end < anime.files.length) {
+        // console.log('end < anime.files.length', end, movie.files.length);
+        navButtons.push({
+          text: 'Next ➡️',
+          callback_data: `page_${anime._id}_${page + 1}`,
+        });
+      }
+      if (navButtons.length) buttons.push(navButtons);
 
-    if (ctx.updateType === 'callback_query') {
-      // edit the inline keyboard when callback
-      await ctx.editMessageText(
-        `<b>${anime.name} Anime (Page ${page + 1})</b>`,
-        {
-          parse_mode: 'HTML',
-          reply_markup: { inline_keyboard: buttons },
-        },
-      );
-    } else {
-      // normal reply when user types anime name
-      const msg = await ctx.reply(
-        `<b>${anime.name} Anime (Page ${page + 1})</b>`,
-        {
-          parse_mode: 'HTML',
-          reply_markup: { inline_keyboard: buttons },
-        },
-      );
+      if (ctx.updateType === 'callback_query') {
+        // edit the inline keyboard when callback
+        await ctx.editMessageText(
+          `<b>${anime.name} Anime (Page ${page + 1})</b>`,
+          {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: buttons },
+          },
+        );
+      } else {
+        // normal reply when user types anime name
+        const msg = await ctx.reply(
+          `<b>${anime.name} Anime (Page ${page + 1})</b>`,
+          {
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: buttons },
+          },
+        );
 
-      await this.tempMessageModel.create({
-        userId: ctx.from.id,
-        messageId: msg.message_id,
-        chatId: ctx.chat.id,
-        expireAt: new Date(Date.now() + 5 * 60 * 1000),
-      });
+        await this.tempMessageModel.create({
+          userId: ctx.from.id,
+          messageId: msg.message_id,
+          chatId: ctx.chat.id,
+          expireAt: new Date(Date.now() + 5 * 60 * 1000),
+        });
+      }
+    } catch (err) {
+      console.log('Error sending anime episode page',err);
     }
   }
 
