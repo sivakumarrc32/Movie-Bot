@@ -1167,7 +1167,7 @@ export class MovieBotService implements OnModuleInit {
         // console.log('end < anime.files.length', end, movie.files.length);
         navButtons.push({
           text: 'Next ➡️',
-          callback_data: `page_${anime._id}_${page + 1}`,
+          callback_data: `anime_page_${anime._id}_${page + 1}`,
         });
       }
       if (navButtons.length) buttons.push(navButtons);
@@ -1241,7 +1241,7 @@ export class MovieBotService implements OnModuleInit {
     }
   }
 
-  async findTopMatches(input, docs, minScore = 90) {
+  findTopMatches(input, docs, minScore = 90) {
     return docs
       .map((doc) => ({
         doc,
@@ -1251,7 +1251,7 @@ export class MovieBotService implements OnModuleInit {
       .sort((a, b) => b.score - a.score);
   }
 
-  async ExtractAudio(caption) {
+  ExtractAudio(caption) {
     try {
       // if (!caption || typeof caption !== "string") {
       //   return ""; // ❌ no unknown, no null
@@ -1274,7 +1274,7 @@ export class MovieBotService implements OnModuleInit {
     }
   }
 
-  async ExtractQuality(caption) {
+  ExtractQuality(caption) {
     try {
       const lines = caption.caption.split('\n');
       for (const line of lines) {
