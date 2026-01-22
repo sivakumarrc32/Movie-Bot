@@ -745,9 +745,25 @@ export class MovieBotService implements OnModuleInit {
       const isOwner = this.checkOwner(ctx);
       if (!isOwner) return;
       const requestMovies = await this.requestModel.find();
-      await ctx.reply(`<b>Requested Movies:</b> \n\n<code>${requestMovies.map((movie) => movie.name).join('\n')}</code>`, {
+      if (requestMovies.length === 0) {
+        return await ctx.reply(`⚠️ No Requested Movies Found`, {
+          parse_mode: 'HTML',
+        });
+      }
+
+      let msg = `<b><u>Requested Movies</u></b>\n\n`;
+      requestMovies.forEach((m, i) => {
+        msg += `<b>${i + 1}. <code>${m.name}</code></b>\n`;
+      });
+      const rm = await ctx.reply(msg, {
         parse_mode: 'HTML',
       });
+
+      await this.tempMessageModel.create({
+        chatId: rm.chat.id,
+        messageId: rm.message_id,
+        expireAt: this.expireAt,
+      })
     }catch(err){
       console.log(err);
     }
