@@ -182,7 +182,8 @@ export class MovieBotService implements OnModuleInit {
     this.bot.command('list', async (ctx) => {
       await this.sendMovieList(ctx, 1, false); // false => not editing, fresh reply
     });
-
+    this.bot.command('rm' , async (ctx) => this.requestedMovies(ctx));
+    this.bot.command('drm', async (ctx) => this.deleteRequestedMovies(ctx));
     this.bot.action(/^list_page_(\d+)$/, async (ctx) => {
       const page = parseInt(ctx.match[1]);
       await this.sendMovieList(ctx, page, true); // true => editing
@@ -736,6 +737,38 @@ export class MovieBotService implements OnModuleInit {
       });
     } catch (err) {
       console.error('Help command error:', err.message);
+    }
+  }
+
+  async requestedMovies(ctx) {
+    try{
+      const isOwner = this.checkOwner(ctx);
+      if (!isOwner) return;
+      const requestMovies = await this.requestModel.find();
+      await ctx.reply(`<b>Requested Movies:</b> \n\n<code>${requestMovies.map((movie) => movie.name).join('\n')}</code>`, {
+        parse_mode: 'HTML',
+      });
+    }catch(err){
+      console.log(err);
+    }
+  }
+
+  async deleteRequestedMovies(ctx){
+    try{
+      const isOwner = this.checkOwner(ctx);
+      if (!isOwner) return;
+      const input = ctx.message.text.split(' ').slice(1).join(' ');
+      if(!input) {
+        return await ctx.reply(`⚠️ Please provide a movie name.\n Eg : /drm <movieName>`, {
+          parse_mode: 'HTML',
+        });
+      }
+      await this.requestModel.deleteMany({name: input});
+      await ctx.reply(`✅ Requested Movie Deleted Successfully`, {
+        parse_mode: 'HTML',
+      });
+    }catch(err){
+      console.log(err);
     }
   }
 
