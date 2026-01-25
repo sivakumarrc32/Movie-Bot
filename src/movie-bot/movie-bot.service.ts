@@ -439,7 +439,7 @@ export class MovieBotService implements OnModuleInit {
                 ],
                 [
                   {
-                    text: 'Request Movie',
+                    text: 'Request Movie in Group',
                     url: 'https://t.me/+JH-KR5ZMJUQyNzI1',
                   },
                 ],
