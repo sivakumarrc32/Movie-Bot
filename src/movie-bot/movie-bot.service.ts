@@ -363,6 +363,7 @@ export class MovieBotService implements OnModuleInit {
     //   'CAACAgUAAxkBAAMFaSc8IasIRuuXn1VeS6izQIULISAAAkYcAAKN_zlVtkSzXMfczYQ2BA',
     // );
     console.log('Checking 1');
+    console.log(`Movie Request by ${ctx.from.first_name} ${ctx.from.last_name} ${ctx.from.username} ${ctx.from.id}`);
 
     try {
       const rawText = ctx.message.text.trim();
@@ -602,6 +603,8 @@ export class MovieBotService implements OnModuleInit {
       const searchText = name.trim().toLowerCase();
 
       console.log('SEARCH TEXT:', searchText);
+    console.log(`Movie Request by ${ctx.from.first_name} ${ctx.from.last_name} ${ctx.from.username} ${ctx.from.id}`);
+
 
       // 🟡 get all movies
       const movies = await this.movieModel.find();
