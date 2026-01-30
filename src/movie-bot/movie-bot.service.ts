@@ -811,7 +811,7 @@ export class MovieBotService implements OnModuleInit {
       let msg;
       
       if(Movies.length > 1) {
-        Movies.foreach((m) => {
+        Movies.forEach((m) => {
           msg += `<blockquote> <code>m.name</code> \n\n m.caption </blockquote>`
         })
 
