@@ -74,7 +74,7 @@ export class MovieBotService implements OnModuleInit {
     {
       id: '-1003261050452',
       text: '📢 Join Channel 1',
-      url: 'https://t.me/LordFourthMovieTamil',
+      url: 'https://t.me/LFT_Movie',
     },
     {
       id: '-1003326848627',
