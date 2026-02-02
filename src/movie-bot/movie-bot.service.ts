@@ -182,10 +182,10 @@ export class MovieBotService implements OnModuleInit {
     this.bot.command('list', async (ctx) => {
       await this.sendMovieList(ctx, 1, false); // false => not editing, fresh reply
     });
-    this.bot.command('rm' , async (ctx) => this.requestedMovies(ctx));
+    this.bot.command('rm', async (ctx) => this.requestedMovies(ctx));
     this.bot.command('drm', async (ctx) => this.deleteRequestedMovies(ctx));
     this.bot.command('sm', async (ctx) => this.searchMovie(ctx));
-    this.bot.command('dm', async (ctx) => this.deleteMovieInDB(ctx)); 
+    this.bot.command('dm', async (ctx) => this.deleteMovieInDB(ctx));
     this.bot.action(/^list_page_(\d+)$/, async (ctx) => {
       const page = parseInt(ctx.match[1]);
       await this.sendMovieList(ctx, page, true); // true => editing
@@ -365,7 +365,9 @@ export class MovieBotService implements OnModuleInit {
     //   'CAACAgUAAxkBAAMFaSc8IasIRuuXn1VeS6izQIULISAAAkYcAAKN_zlVtkSzXMfczYQ2BA',
     // );
     console.log('Checking 1');
-    console.log(`Movie Request by ${ctx.from.first_name} ${ctx.from.last_name} ${ctx.from.username} ${ctx.from.id}`);
+    console.log(
+      `Movie Request by ${ctx.from.first_name} ${ctx.from.last_name} ${ctx.from.username} ${ctx.from.id}`,
+    );
 
     try {
       const rawText = ctx.message.text.trim();
@@ -605,8 +607,9 @@ export class MovieBotService implements OnModuleInit {
       const searchText = name.trim().toLowerCase();
 
       console.log('SEARCH TEXT:', searchText);
-    console.log(`Movie Request by ${ctx.from.first_name} ${ctx.from.last_name} ${ctx.from.username} ${ctx.from.id}`);
-
+      console.log(
+        `Movie Request by ${ctx.from.first_name} ${ctx.from.last_name} ${ctx.from.username} ${ctx.from.id}`,
+      );
 
       // 🟡 get all movies
       const movies = await this.movieModel.find();
@@ -746,7 +749,7 @@ export class MovieBotService implements OnModuleInit {
   }
 
   async requestedMovies(ctx) {
-    try{
+    try {
       const isOwner = this.checkOwner(ctx);
       if (!isOwner) return;
       const requestMovies = await this.requestModel.find();
@@ -768,27 +771,30 @@ export class MovieBotService implements OnModuleInit {
         chatId: rm.chat.id,
         messageId: rm.message_id,
         expireAt: this.expireAt,
-      })
-    }catch(err){
+      });
+    } catch (err) {
       console.log(err);
     }
   }
 
-  async deleteRequestedMovies(ctx){
-    try{
+  async deleteRequestedMovies(ctx) {
+    try {
       const isOwner = this.checkOwner(ctx);
       if (!isOwner) return;
       const input = ctx.message.text.split(' ').slice(1).join(' ');
-      if(!input) {
-        return await ctx.reply(`⚠️ Please provide a movie name.\n Eg : /drm <movieName>`, {
-          parse_mode: 'HTML',
-        });
+      if (!input) {
+        return await ctx.reply(
+          `⚠️ Please provide a movie name.\n Eg : /drm <movieName>`,
+          {
+            parse_mode: 'HTML',
+          },
+        );
       }
-      await this.requestModel.deleteMany({name: input});
+      await this.requestModel.deleteMany({ name: input });
       await ctx.reply(`✅ Requested Movie Deleted Successfully`, {
         parse_mode: 'HTML',
       });
-    }catch(err){
+    } catch (err) {
       console.log(err);
     }
   }
@@ -798,68 +804,76 @@ export class MovieBotService implements OnModuleInit {
       const isOwner = this.checkOwner(ctx);
       if (!isOwner) return;
       const input = ctx.message.text.split(' ').slice(1).join(' ');
-      if(!input) {
-        return await ctx.reply(`⚠️ Please provide a movie name.\n Eg : /sm <movieName>`, {
-          parse_mode: 'HTML',
-        });
+      if (!input) {
+        return await ctx.reply(
+          `⚠️ Please provide a movie name.\n Eg : /sm <movieName>`,
+          {
+            parse_mode: 'HTML',
+          },
+        );
       }
-      const Movies= await this.movieModel.find({name: input});
+      const Movies = await this.movieModel.find({ name: input });
 
-      if(Movies.length === 0) {
+      if (Movies.length === 0) {
         return await ctx.reply(`No Movies Found the Input`);
       }
 
       let msg;
-      
-      if(Movies.length > 1) {
-        Movies.forEach((m) => {
-          msg += `<blockquote> <code>m.name</code> \n\n m.caption </blockquote>`
-        })
 
-        return await ctx.reply(msg,{
-          parse_mode: 'HTML', 
-        }) 
+      if (Movies.length > 1) {
+        Movies.forEach((m) => {
+          msg += `<blockquote> <code>m.name</code> \n\n m.caption </blockquote>`;
+        });
+
+        return await ctx.reply(msg, {
+          parse_mode: 'HTML',
+        });
       }
-      if(Movies.length === 1) {
-        const movie = Movies[0]
-        await ctx.reply(`The Movie in Database \n\n <blockquote>${movie.caption}</blockquote>`,{
-          parse_mode: 'HTML'
-        }) 
+      if (Movies.length === 1) {
+        const movie = Movies[0];
+        await ctx.reply(
+          `The Movie in Database \n\n <blockquote>${movie.caption}</blockquote>`,
+          {
+            parse_mode: 'HTML',
+          },
+        );
       }
       //await this.movieModel.deleteMany({name: input});
       await ctx.reply(`✅ Requested Movie showed Successfully`, {
         parse_mode: 'HTML',
       });
-    }catch(err){
+    } catch (err) {
       console.log(err);
-    }  
+    }
   }
 
-async deleteMovieInDB(ctx) {
-  try{
+  async deleteMovieInDB(ctx) {
+    try {
       const isOwner = this.checkOwner(ctx);
       if (!isOwner) return;
       const input = ctx.message.text.split(' ').slice(1).join(' ');
-      if(!input) {
-        return await ctx.reply(`⚠️ Please provide a movie name.\n Eg : /dm <movieName>`, {
-          parse_mode: 'HTML',
-        });
+      if (!input) {
+        return await ctx.reply(
+          `⚠️ Please provide a movie name.\n Eg : /dm <movieName>`,
+          {
+            parse_mode: 'HTML',
+          },
+        );
       }
-      await this.movieModel.deleteOne({name: input});
+      await this.movieModel.deleteOne({ name: input });
       await ctx.reply(`✅ Requested Movie Deleted Successfully`, {
         parse_mode: 'HTML',
       });
-    }catch(err){
+    } catch (err) {
       console.log(err);
+    }
   }
-}
 
-  
   async about(ctx) {
     await ctx.answerCbQuery();
 
     try {
-     const msg = await ctx.editMessageCaption(
+      const msg = await ctx.editMessageCaption(
         `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_movie5_bot">Movie Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
         {
           parse_mode: 'HTML',
@@ -1166,7 +1180,7 @@ async deleteMovieInDB(ctx) {
 
       files.forEach((file, idx) => {
         const fileName = file.fileName
-          .replace(/^@[^-_:]+[-_:]+[_]*\s*/, '') // remove @BotName prefixes with - or _
+          .replace(/^@\S+\s*[:-]*\s*/, '')
           .replace(/\.mkv$/i, '');
         const fileSize = file.size || '';
         // 🔴 CHANGE 2: correct index for reversed order
@@ -1315,7 +1329,7 @@ async deleteMovieInDB(ctx) {
         });
       }
     } catch (err) {
-      console.log('Error sending anime episode page',err);
+      console.log('Error sending anime episode page', err);
     }
   }
 
