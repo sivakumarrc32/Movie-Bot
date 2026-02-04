@@ -103,7 +103,7 @@ export class AnimeService implements OnModuleInit {
     {
       id: '-1003261050452',
       text: '📢 Join Channel 1',
-      url: 'https://t.me/LordFourthAnimeTamil',
+      url: 'https://t.me/LFT_Anime',
     },
     {
       id: '-1003326848627',
@@ -715,6 +715,7 @@ export class AnimeService implements OnModuleInit {
         messageId: msg.message_id,
         expireAt: new Date(Date.now() + 5 * 60 * 1000),
       });
+      
     } catch (err) {
       console.error('Anime search error:', err.message);
     }
