@@ -869,7 +869,7 @@ export class AnimeService implements OnModuleInit {
         if (!anime) return ctx.reply('❌ Anime not found.');
 
         for (const file of anime.files) {
-          const message = await ctx.telegram.forwardMessage(
+          const message = await ctx.telegram.copyMessage(
             ctx.chat.id,
             file.chatId,
             file.messageId,
@@ -907,7 +907,7 @@ export class AnimeService implements OnModuleInit {
         const file = anime.files[idx];
         if (!file) return ctx.reply('❌ Episode not found.');
 
-        const msg = await ctx.telegram.forwardMessage(
+        const msg = await ctx.telegram.copyMessage(
           ctx.chat.id,
           file.chatId,
           file.messageId,
