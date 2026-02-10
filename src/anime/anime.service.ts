@@ -101,7 +101,7 @@ export class AnimeService implements OnModuleInit {
 
   private channels: ChannelInfo[] = [
     {
-      id: '-1003261050452',
+      id: '-1003678273771',
       text: '📢 Join Channel 1',
       url: 'https://t.me/+ZsEU6M0ISTBmZTNl',
     },
