@@ -103,7 +103,7 @@ export class AnimeService implements OnModuleInit {
     {
       id: '-1003261050452',
       text: '📢 Join Channel 1',
-      url: 'https://t.me/LFT_Anime',
+      url: 'https://t.me/+ZsEU6M0ISTBmZTNl',
     },
     {
       id: '-1003326848627',
