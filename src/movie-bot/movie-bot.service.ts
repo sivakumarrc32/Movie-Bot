@@ -82,14 +82,14 @@ export class MovieBotService implements OnModuleInit {
       url: 'https://t.me/+Ekzqobyp6GY4OGE9',
     },
     {
-      id: '-1003579412645',
+      id: '-1003847082548',
       text: '📢 Join Channel 3',
-      url: 'https://t.me/+YfFvZ_QPOqBiYzE1',
+      url: 'https://t.me/+5It5cJtwFgU4NTM1',
     },
     {
-      id: '-1003624602414',
+      id: '-1003579412645',
       text: 'Main Channel',
-      url: 'https://t.me/+uhgXU7hwvnk2YTRl',
+      url: 'https://t.me/+eowduZXbyy40NmZl',
     },
   ]; // 🔴 unga rendu channel usernames
 
