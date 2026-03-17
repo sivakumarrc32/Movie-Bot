@@ -544,36 +544,92 @@ export class MovieBotService implements OnModuleInit {
     try {
       const searchText = name.trim().toLowerCase();
       console.log('sendMovieName:', searchText);
-
+  
       const movies = await this.movieModel.find();
-
+  
       if (movies.length === 0) {
         const msg = await this.replyNotFound(ctx, name);
         await this.saveTempMessage(msg.chat.id, msg.message_id, DEFAULT_TTL_MS);
         return;
       }
-
-      // Find the best fuzzy match
-      let bestMatch: Movie | null = null;
-      let bestScore = 0;
+  
+      // Collect ALL movies that meet the fuzzy threshold
+      const matches: { doc: Movie; score: number }[] = [];
       for (const movie of movies) {
         const score = ratio(searchText, movie.name.toLowerCase());
-        if (score > bestScore) {
-          bestScore = score;
-          bestMatch = movie;
+        if (score >= FUZZY_MIN_SCORE) {
+          matches.push({ doc: movie, score });
         }
       }
-
-      console.log('Best match:', bestMatch?.name, bestScore);
-
-      if (bestMatch && bestScore >= FUZZY_MIN_SCORE) {
-        await this.tryCopyPoster(ctx, bestMatch);
-        return this.sendEpisodePage(ctx, bestMatch, 0);
+  
+      // Sort best score first
+      matches.sort((a, b) => b.score - a.score);
+  
+      console.log('sendMovieName matches:', matches.map((m) => `${m.doc.name} (${m.score})`));
+  
+      // ── No confident match ────────────────────
+      if (matches.length === 0) {
+        const msg = await this.replyNotFound(ctx, name);
+        await this.saveTempMessage(msg.chat.id, msg.message_id, DEFAULT_TTL_MS);
+        return;
       }
-
-      // No confident match
-      const msg = await this.replyNotFound(ctx, name);
-      await this.saveTempMessage(msg.chat.id, msg.message_id, DEFAULT_TTL_MS);
+  
+      // ── Single match → send directly ─────────
+      if (matches.length === 1) {
+        const movie = matches[0].doc;
+        const enc  = Buffer.from(movie.name, 'utf-8').toString('base64');
+        const link = `https://t.me/${this.boturl}?start=${enc}`;
+        const audio = this.extractAudio(movie) || 'Unknown';
+        const qual  = this.extractQuality(movie) || 'Unknown';
+  
+        const text =
+          `┎ <b>${this.escapeHtml(movie.name)}</b> ➻ <a href="${link}">Click Here</a>\n` +
+          `┃\n` +
+          `┠  <b>Audio : <i>${this.escapeHtml(audio)}</i></b>\n` +
+          `┃\n` +
+          `┖ <b>Quality : <i>${this.escapeHtml(qual)}</i></b>`;
+  
+        const sent = await ctx.reply(text, {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+        });
+        await this.saveTempMessage(sent.chat.id, sent.message_id, FILE_TTL_MS, ctx.from.id);
+        return;
+      }
+  
+      // ── Multiple matches → picker ─────────────
+      let text = `<b>Multiple Results Found</b>\n<i>Please choose the exact Movie</i>\n\n🎬 <b>Movies</b>\n\n`;
+  
+      for (let i = 0; i < matches.length; i++) {
+        const movie = matches[i].doc;
+        const enc   = Buffer.from(movie.name, 'utf-8').toString('base64');
+        const link  = `https://t.me/${this.boturl}?start=${enc}`;
+        const audio = this.extractAudio(movie) || 'Unknown';
+        const qual  = this.extractQuality(movie) || 'Unknown';
+        const year  = (movie as any).year ? String((movie as any).year) : null;
+  
+        text += `${i + 1}.┎ <b>${this.escapeHtml(movie.name)}</b> ➻ <a href="${link}">Click Here</a>\n`;
+        text += `   ┃\n`;
+        if (year) {
+          text += `   ┠  <b>Year : <i>${this.escapeHtml(year)}</i></b>\n`;
+          text += `   ┃\n`;
+        }
+        text += `   ┠  <b>Audio : <i>${this.escapeHtml(audio)}</i></b>\n`;
+        text += `   ┃\n`;
+        text += `   ┖ <b>Quality : <i>${this.escapeHtml(qual)}</i></b>\n\n`;
+      }
+  
+      const sent = await ctx.reply(text, {
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      });
+      await this.saveTempMessage(sent.chat.id, sent.message_id, FILE_TTL_MS, ctx.from.id);
+  
+      const warn = await ctx.reply(
+        `<b>⚠️ Warning</b>\n\n<blockquote>Due to Copyright issues, messages will be deleted after 5 minutes.\n<b>Forward the message to Saved Messages.</b></blockquote>`,
+        { parse_mode: 'HTML' },
+      );
+      await this.saveTempMessage(warn.chat.id, warn.message_id, FILE_TTL_MS, ctx.from.id);
     } catch (err) {
       console.error('sendMovieName error:', err.message);
     }
