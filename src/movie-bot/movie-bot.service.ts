@@ -92,6 +92,7 @@ const FILE_TTL_MS = 5 * 60 * 1000;
 /** Minimum fuzzy-match score to treat a result as confident */
 const FUZZY_MIN_SCORE = 90;
 
+const PICKER_PAGE_SIZE = 5;
 // ─────────────────────────────────────────────
 //  Service
 // ─────────────────────────────────────────────
@@ -175,6 +176,9 @@ export class MovieBotService implements OnModuleInit {
       const page = parseInt(ctx.match[1]);
       return this.sendMovieList(ctx, page, true);
     });
+    this.bot.action(/^mpick_(\d+)$/, (ctx) =>
+      this.handleMultipleMoviePicker(ctx),
+    );
 
     this.bot.action('list', (ctx) => this.sendMovieList(ctx, 1, false));
     this.bot.action('help', (ctx) => this.help(ctx));
@@ -542,18 +546,38 @@ export class MovieBotService implements OnModuleInit {
    */
   async sendMovieName(ctx: any, name: string) {
     try {
-      const searchText = name.trim().toLowerCase();
-      console.log('sendMovieName:', searchText);
+      // Detect "name|year" format from picker deep-link
+      const pipeIdx = name.lastIndexOf('|');
+      const yearFromPayload =
+        pipeIdx !== -1 ? parseInt(name.slice(pipeIdx + 1), 10) : null;
+      const nameFromPayload =
+        pipeIdx !== -1 ? name.slice(0, pipeIdx) : name;
+  
+      const searchText = nameFromPayload.trim().toLowerCase();
+      console.log('sendMovieName:', searchText, 'year:', yearFromPayload);
   
       const movies = await this.movieModel.find();
   
       if (movies.length === 0) {
-        const msg = await this.replyNotFound(ctx, name);
+        const msg = await this.replyNotFound(ctx, nameFromPayload);
         await this.saveTempMessage(msg.chat.id, msg.message_id, DEFAULT_TTL_MS);
         return;
       }
   
-      // Collect ALL movies that meet the fuzzy threshold
+      // ── name|year path: find the exact doc ───────────────────────────────────
+      if (yearFromPayload) {
+        const exact = movies.find(
+          (m) =>
+            m.name.toLowerCase() === searchText &&
+            (m as any).year === yearFromPayload,
+        );
+        if (exact) {
+          await this.tryCopyPoster(ctx, exact);
+          return this.sendEpisodePage(ctx, exact, 0);
+        }
+      }
+  
+      // ── Regular fuzzy search path ─────────────────────────────────────────────
       const matches: { doc: Movie; score: number }[] = [];
       for (const movie of movies) {
         const score = ratio(searchText, movie.name.toLowerCase());
@@ -561,79 +585,120 @@ export class MovieBotService implements OnModuleInit {
           matches.push({ doc: movie, score });
         }
       }
-  
-      // Sort best score first
       matches.sort((a, b) => b.score - a.score);
   
-      console.log('sendMovieName matches:', matches.map((m) => `${m.doc.name} (${m.score})`));
-  
-      // ── No confident match ────────────────────
       if (matches.length === 0) {
-        const msg = await this.replyNotFound(ctx, name);
+        const msg = await this.replyNotFound(ctx, nameFromPayload);
         await this.saveTempMessage(msg.chat.id, msg.message_id, DEFAULT_TTL_MS);
         return;
       }
   
-      // ── Single match → send directly ─────────
       if (matches.length === 1) {
-        const movie = matches[0].doc;
-        const enc  = Buffer.from(movie.name, 'utf-8').toString('base64');
-        const link = `https://t.me/${this.boturl}?start=${enc}`;
-        const audio = this.extractAudio(movie) || 'Unknown';
-        const qual  = this.extractQuality(movie) || 'Unknown';
-  
-        const text =
-          `┎ <b>${this.escapeHtml(movie.name)}</b> ➻ <a href="${link}">Click Here</a>\n` +
-          `┃\n` +
-          `┠  <b>Audio : <i>${this.escapeHtml(audio)}</i></b>\n` +
-          `┃\n` +
-          `┖ <b>Quality : <i>${this.escapeHtml(qual)}</i></b>`;
-  
-        const sent = await ctx.reply(text, {
-          parse_mode: 'HTML',
-          disable_web_page_preview: true,
-        });
-        await this.saveTempMessage(sent.chat.id, sent.message_id, FILE_TTL_MS, ctx.from.id);
-        return;
+        await this.tryCopyPoster(ctx, matches[0].doc);
+        return this.sendEpisodePage(ctx, matches[0].doc, 0);
       }
   
-      // ── Multiple matches → picker ─────────────
-      let text = `<b>Multiple Results Found</b>\n<i>Please choose the exact Movie</i>\n\n🎬 <b>Movies</b>\n\n`;
+      await this.sendMoviePickerPage(ctx, matches, 0);
+    } catch (err) {
+      console.error('sendMovieName error:', err.message);
+    }
+  }
   
-      for (let i = 0; i < matches.length; i++) {
-        const movie = matches[i].doc;
-        const enc   = Buffer.from(movie.name, 'utf-8').toString('base64');
-        const link  = `https://t.me/${this.boturl}?start=${enc}`;
-        const audio = this.extractAudio(movie) || 'Unknown';
-        const qual  = this.extractQuality(movie) || 'Unknown';
-        const year  = (movie as any).year ? String((movie as any).year) : null;
   
-        text += `${i + 1}.┎ <b>${this.escapeHtml(movie.name)}</b> ➻ <a href="${link}">Click Here</a>\n`;
+  // ─── New helper: render one page of the picker ────────────────────────────────
+  /**
+   * Renders a paginated picker when multiple docs share the same fuzzy match.
+   * Payload is encoded as base64(name|year) so each link resolves uniquely.
+   */
+  private async sendMoviePickerPage(
+    ctx: any,
+    matches: { doc: any; score: number }[],
+    page: number,
+    isEdit = false,
+  ) {
+    const start = page * PICKER_PAGE_SIZE;
+    const end = start + PICKER_PAGE_SIZE;
+    const pageItems = matches.slice(start, end);
+    const totalPages = Math.ceil(matches.length / PICKER_PAGE_SIZE);
+  
+    let text =
+      `<b>Multiple Results Found</b>\n` +
+      `<i>Please choose the exact movie</i>\n\n` +
+      `🎬 <b>Movies (Page ${page + 1}/${totalPages})</b>\n\n`;
+  
+    for (let i = 0; i < pageItems.length; i++) {
+      const movie = pageItems[i].doc;
+      const year: number | null = (movie as any).year ?? null;
+      const audio = this.extractAudio(movie) || 'Unknown';
+      const qual = this.extractQuality(movie) || 'Unknown';
+  
+      // Encode as "name|year" so deep-link can resolve the exact doc
+      const payload = year
+        ? `${movie.name}|${year}`
+        : movie.name;
+      const enc = Buffer.from(payload, 'utf-8').toString('base64');
+      const link = `https://t.me/${this.boturl}?start=${enc}`;
+  
+      text += `${start + i + 1}.┎ <b>${this.escapeHtml(movie.name)}</b> ➻ <a href="${link}">Click Here</a>\n`;
+      text += `   ┃\n`;
+      if (year) {
+        text += `   ┠  <b>Year : <i>${year}</i></b>\n`;
         text += `   ┃\n`;
-        if (year) {
-          text += `   ┠  <b>Year : <i>${this.escapeHtml(year)}</i></b>\n`;
-          text += `   ┃\n`;
-        }
-        text += `   ┠  <b>Audio : <i>${this.escapeHtml(audio)}</i></b>\n`;
-        text += `   ┃\n`;
-        text += `   ┖ <b>Quality : <i>${this.escapeHtml(qual)}</i></b>\n\n`;
       }
+      text += `   ┠  <b>Audio : <i>${this.escapeHtml(audio)}</i></b>\n`;
+      text += `   ┃\n`;
+      text += `   ┖ <b>Quality : <i>${this.escapeHtml(qual)}</i></b>\n\n`;
+    }
   
-      const sent = await ctx.reply(text, {
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
+    // Build navigation row
+    const navButtons: any[] = [];
+    if (page > 0) {
+      navButtons.push({
+        text: '⬅️ Prev',
+        callback_data: `mpick_${page - 1}`,
       });
-      await this.saveTempMessage(sent.chat.id, sent.message_id, FILE_TTL_MS, ctx.from.id);
+    }
+    navButtons.push({
+      text: `${page + 1} / ${totalPages}`,
+      callback_data: 'noop',
+    });
+    if (end < matches.length) {
+      navButtons.push({
+        text: 'Next ➡️',
+        callback_data: `mpick_${page + 1}`,
+      });
+    }
+  
+    const opts: any = {
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: [navButtons] },
+    };
+  
+    if (isEdit) {
+      await ctx.editMessageText(text, opts);
+    } else {
+      const sent = await ctx.reply(text, opts);
+      await this.saveTempMessage(
+        sent.chat.id,
+        sent.message_id,
+        FILE_TTL_MS,
+        ctx.from.id,
+      );
   
       const warn = await ctx.reply(
         `<b>⚠️ Warning</b>\n\n<blockquote>Due to Copyright issues, messages will be deleted after 5 minutes.\n<b>Forward the message to Saved Messages.</b></blockquote>`,
         { parse_mode: 'HTML' },
       );
-      await this.saveTempMessage(warn.chat.id, warn.message_id, FILE_TTL_MS, ctx.from.id);
-    } catch (err) {
-      console.error('sendMovieName error:', err.message);
+      await this.saveTempMessage(
+        warn.chat.id,
+        warn.message_id,
+        FILE_TTL_MS,
+        ctx.from.id,
+      );
     }
   }
+  
 
   // ════════════════════════════════════════════
   //  Episode page  –  Movie
@@ -1113,6 +1178,42 @@ export class MovieBotService implements OnModuleInit {
       );
     }
   }
+
+  // ─── New callback handler: mpick_<page> ──────────────────────────────────────
+/**
+ * Handles pagination clicks on the multiple-movie picker.
+ * Re-runs the same fuzzy search to rebuild the matches list, then re-renders the page.
+ */
+private async handleMultipleMoviePicker(ctx: any) {
+  try {
+    await ctx.answerCbQuery();
+    const data: string = ctx.callbackQuery.data;           // mpick_<page>
+    const page = parseInt(data.split('_')[1], 10);
+
+    // Recover the original query from the current message text
+    const msgText: string = ctx.callbackQuery.message?.text || '';
+    const nameLine = msgText.split('\n').find((l) => l.includes('➻'));
+    if (!nameLine) return ctx.answerCbQuery('⚠️ Could not find original query.');
+
+    // Re-search DB using the first movie name visible in the message as the seed query
+    const rawName = nameLine.replace(/^\d+\.\s*[┎┖┠┃]*\s*/, '').split('➻')[0].trim();
+    const movies = await this.movieModel.find();
+    const matches = movies
+      .map((doc) => ({
+        doc,
+        score: ratio(rawName.toLowerCase(), doc.name.toLowerCase()),
+      }))
+      .filter((r) => r.score >= FUZZY_MIN_SCORE)
+      .sort((a, b) => b.score - a.score);
+
+    if (matches.length === 0) return ctx.answerCbQuery('⚠️ Results expired.');
+
+    await this.sendMoviePickerPage(ctx, matches, page, true);
+  } catch (err) {
+    console.error('handleMultipleMoviePicker error:', err.message);
+  }
+}
+
 
   /**
    * Copies all files in a list to the user's chat and
