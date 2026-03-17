@@ -59,8 +59,22 @@ const REQUIRED_CHANNELS: ChannelInfo[] = [
 
 /** Random emojis used when reacting to a user's message */
 const REACTION_EMOJIS = [
-  '👍', '👎', '❤️', '🔥', '🎉', '🤩', '😱',
-  '😁', '😢', '💩', '🤮', '🥰', '🤯', '🤔', '🤬', '👏',
+  '👍',
+  '👎',
+  '❤️',
+  '🔥',
+  '🎉',
+  '🤩',
+  '😱',
+  '😁',
+  '😢',
+  '💩',
+  '🤮',
+  '🥰',
+  '🤯',
+  '🤔',
+  '🤬',
+  '👏',
 ];
 
 /** How many files to show per page in the episode selector */
@@ -308,8 +322,14 @@ export class MovieBotService implements OnModuleInit {
           reply_markup: {
             inline_keyboard: [
               [
-                { text: 'Movie Bot', url: 'https://t.me/lord_fourth_movie6_bot' },
-                { text: 'Anime Bot', url: 'https://t.me/lord_fourth_anime_bot' },
+                {
+                  text: 'Movie Bot',
+                  url: 'https://t.me/lord_fourth_movie6_bot',
+                },
+                {
+                  text: 'Anime Bot',
+                  url: 'https://t.me/lord_fourth_anime_bot',
+                },
               ],
               [
                 { text: '📃 List of Movies', callback_data: 'list' },
@@ -505,7 +525,7 @@ export class MovieBotService implements OnModuleInit {
       // ── Multiple results → paginated picker ──
       if (movieMatches.length > 1 || animeMatches.length > 1) {
         await ctx.react('🤔');
-        await this.sendMultipleResultsPicker(ctx, movieMatches, animeMatches, 0);
+        await this.sendMultipleResultsPicker(ctx, movieMatches, animeMatches, 0, searchName);
         return;
       }
 
@@ -659,7 +679,10 @@ export class MovieBotService implements OnModuleInit {
     const navButtons: any[] = [];
     if (page > 0)
       navButtons.push({ text: '⬅️ Prev', callback_data: `mpick_${page - 1}` });
-    navButtons.push({ text: `${page + 1} / ${totalPages}`, callback_data: 'noop' });
+    navButtons.push({
+      text: `${page + 1} / ${totalPages}`,
+      callback_data: 'noop',
+    });
     if (end < matches.length)
       navButtons.push({ text: 'Next ➡️', callback_data: `mpick_${page + 1}` });
 
@@ -673,13 +696,23 @@ export class MovieBotService implements OnModuleInit {
       await ctx.editMessageText(text, opts);
     } else {
       const sent = await ctx.reply(text, opts);
-      await this.saveTempMessage(sent.chat.id, sent.message_id, FILE_TTL_MS, ctx.from.id);
+      await this.saveTempMessage(
+        sent.chat.id,
+        sent.message_id,
+        FILE_TTL_MS,
+        ctx.from.id,
+      );
 
       const warn = await ctx.reply(
         `<b>⚠️ Warning</b>\n\n<blockquote>Due to Copyright issues, messages will be deleted after 5 minutes.\n<b>Forward the message to Saved Messages.</b></blockquote>`,
         { parse_mode: 'HTML' },
       );
-      await this.saveTempMessage(warn.chat.id, warn.message_id, FILE_TTL_MS, ctx.from.id);
+      await this.saveTempMessage(
+        warn.chat.id,
+        warn.message_id,
+        FILE_TTL_MS,
+        ctx.from.id,
+      );
     }
   }
 
@@ -742,6 +775,7 @@ export class MovieBotService implements OnModuleInit {
     movieMatches: { doc: any; score: number }[],
     animeMatches: { doc: any; score: number }[],
     page: number,
+    searchName: string, 
     isEdit = false,
   ) {
     // Merge into one flat array: movies first, then animes
@@ -759,6 +793,7 @@ export class MovieBotService implements OnModuleInit {
     let text =
       `<b>Multiple Results Found</b>\n` +
       `<i>Please choose the exact Movie or Anime</i>\n\n` +
+      `🔍 ${this.escapeHtml(searchName)}\n` +
       `📋 <b>Results (Page ${page + 1}/${totalPages})</b>\n\n`;
 
     for (let i = 0; i < pageItems.length; i++) {
@@ -793,7 +828,10 @@ export class MovieBotService implements OnModuleInit {
     const navButtons: any[] = [];
     if (page > 0)
       navButtons.push({ text: '⬅️ Prev', callback_data: `smpick_${page - 1}` });
-    navButtons.push({ text: `${page + 1} / ${totalPages}`, callback_data: 'noop' });
+    navButtons.push({
+      text: `${page + 1} / ${totalPages}`,
+      callback_data: 'noop',
+    });
     if (end < totalItems)
       navButtons.push({ text: 'Next ➡️', callback_data: `smpick_${page + 1}` });
 
@@ -810,7 +848,12 @@ export class MovieBotService implements OnModuleInit {
         ...opts,
         reply_to_message_id: ctx.message?.message_id,
       });
-      await this.saveTempMessage(sent.chat.id, sent.message_id, FILE_TTL_MS, ctx.from.id);
+      await this.saveTempMessage(
+        sent.chat.id,
+        sent.message_id,
+        FILE_TTL_MS,
+        ctx.from.id,
+      );
 
       const warn = await ctx.reply(
         `<b>⚠️ Warning</b>\n\n<blockquote>Due to Copyright issues, messages will be deleted after 5 minutes.\n<b>Forward the message to Saved Messages.</b></blockquote>`,
@@ -819,7 +862,12 @@ export class MovieBotService implements OnModuleInit {
           reply_to_message_id: ctx.message?.message_id,
         },
       );
-      await this.saveTempMessage(warn.chat.id, warn.message_id, FILE_TTL_MS, ctx.from.id);
+      await this.saveTempMessage(
+        warn.chat.id,
+        warn.message_id,
+        FILE_TTL_MS,
+        ctx.from.id,
+      );
     }
   }
 
@@ -835,47 +883,47 @@ export class MovieBotService implements OnModuleInit {
       await ctx.answerCbQuery();
       const data: string = ctx.callbackQuery.data; // smpick_<page>
       const page = parseInt(data.split('_')[1], 10);
-
-      // Recover query from the first "➻" line in the visible message
+  
+      // Recover the original query from the embedded 🔍 header line
       const msgText: string = ctx.callbackQuery.message?.text || '';
-      const nameLine = msgText.split('\n').find((l) => l.includes('➻'));
-      if (!nameLine) {
+      const headerLine = msgText.split('\n').find((l) => l.startsWith('🔍'));
+      if (!headerLine) {
         return ctx.answerCbQuery('⚠️ Could not recover original query.');
       }
-
-      // Strip leading number, type emoji, and box-drawing chars → clean title
-      const rawName = nameLine
-        .replace(/^\d+\.[🎬🎌]?\s*[┎┖┠┃]*\s*/, '')
-        .split('➻')[0]
-        .trim();
-
-      // Re-run fuzzy for both movies and animes in parallel
-      const [movies, animes] = await Promise.all([
-        this.movieModel.find(),
-        this.animeModel.find(),
+  
+      const searchName = headerLine.replace(/^🔍\s*/, '').trim();
+      if (!searchName) {
+        return ctx.answerCbQuery('⚠️ Could not recover original query.');
+      }
+  
+      // ── Replicate sendMovie() search logic exactly so count never changes ──
+      const yearMatch = searchName.match(/\b\d{4}\b/);
+      const year = yearMatch ? Number(yearMatch[0]) : null;
+  
+      const query: any = { name: { $regex: searchName, $options: 'i' } };
+      if (year) query.year = year;
+  
+      const [allMovies, allAnimes] = await Promise.all([
+        this.movieModel.find(query),
+        this.animeModel.find(query),
       ]);
-
-      const movieMatches = movies
-        .map((doc) => ({
-          doc,
-          score: ratio(rawName.toLowerCase(), doc.name.toLowerCase()),
-        }))
-        .filter((r) => r.score >= FUZZY_MIN_SCORE)
-        .sort((a, b) => b.score - a.score);
-
-      const animeMatches = animes
-        .map((doc) => ({
-          doc,
-          score: ratio(rawName.toLowerCase(), doc.name.toLowerCase()),
-        }))
-        .filter((r) => r.score >= FUZZY_MIN_SCORE)
-        .sort((a, b) => b.score - a.score);
-
+  
+      let movieMatches = this.findTopMatches(searchName, allMovies);
+      let animeMatches = this.findTopMatches(searchName, allAnimes);
+  
+      // Same fallback as sendMovie: fuzzy empty but DB hit → use all DB results
+      if (movieMatches.length === 0 && allMovies.length > 0)
+        movieMatches = allMovies.map((doc) => ({ doc, score: 0 }));
+      if (animeMatches.length === 0 && allAnimes.length > 0)
+        animeMatches = allAnimes.map((doc) => ({ doc, score: 0 }));
+  
       if (movieMatches.length === 0 && animeMatches.length === 0) {
         return ctx.answerCbQuery('⚠️ Results expired, please search again.');
       }
-
-      await this.sendMultipleResultsPicker(ctx, movieMatches, animeMatches, page, true);
+  
+      await this.sendMultipleResultsPicker(
+        ctx, movieMatches, animeMatches, page, searchName, true,
+      );
     } catch (err) {
       console.error('handleSendMultiplePicker error:', err.message);
     }
@@ -1088,7 +1136,12 @@ export class MovieBotService implements OnModuleInit {
           },
         },
       );
-      await this.saveTempMessage(ctx.chat.id, msg.message_id, DEFAULT_TTL_MS, ctx.from.id);
+      await this.saveTempMessage(
+        ctx.chat.id,
+        msg.message_id,
+        DEFAULT_TTL_MS,
+        ctx.from.id,
+      );
     } catch (err) {
       console.error('about error:', err.message);
     }
@@ -1120,7 +1173,12 @@ export class MovieBotService implements OnModuleInit {
           },
         },
       );
-      await this.saveTempMessage(ctx.chat.id, msg.message_id, DEFAULT_TTL_MS, ctx.from.id);
+      await this.saveTempMessage(
+        ctx.chat.id,
+        msg.message_id,
+        DEFAULT_TTL_MS,
+        ctx.from.id,
+      );
     } catch (err) {
       console.error('backToStart error:', err.message);
     }
@@ -1147,7 +1205,9 @@ export class MovieBotService implements OnModuleInit {
       if (!this.checkOwner(ctx)) return;
       const requests = await this.requestModel.find();
       if (!requests.length)
-        return ctx.reply('⚠️ No Requested Movies Found', { parse_mode: 'HTML' });
+        return ctx.reply('⚠️ No Requested Movies Found', {
+          parse_mode: 'HTML',
+        });
 
       let msg = `<b><u>Requested Movies</u></b>\n\n`;
       requests.forEach((m, i) => {
@@ -1166,11 +1226,16 @@ export class MovieBotService implements OnModuleInit {
       if (!this.checkOwner(ctx)) return;
       const input = ctx.message.text.split(' ').slice(1).join(' ');
       if (!input)
-        return ctx.reply('⚠️ Please provide a movie name.\nEg: /drm <movieName>', {
-          parse_mode: 'HTML',
-        });
+        return ctx.reply(
+          '⚠️ Please provide a movie name.\nEg: /drm <movieName>',
+          {
+            parse_mode: 'HTML',
+          },
+        );
       await this.requestModel.deleteMany({ name: input });
-      await ctx.reply('✅ Requested Movie Deleted Successfully', { parse_mode: 'HTML' });
+      await ctx.reply('✅ Requested Movie Deleted Successfully', {
+        parse_mode: 'HTML',
+      });
     } catch (err) {
       console.error('deleteRequestedMovies error:', err);
     }
@@ -1181,9 +1246,12 @@ export class MovieBotService implements OnModuleInit {
       if (!this.checkOwner(ctx)) return;
       const input = ctx.message.text.split(' ').slice(1).join(' ');
       if (!input)
-        return ctx.reply('⚠️ Please provide a movie name.\nEg: /sm <movieName>', {
-          parse_mode: 'HTML',
-        });
+        return ctx.reply(
+          '⚠️ Please provide a movie name.\nEg: /sm <movieName>',
+          {
+            parse_mode: 'HTML',
+          },
+        );
 
       const movies = await this.movieModel.find({ name: input });
       if (!movies.length) return ctx.reply('No Movies Found for the input');
@@ -1212,9 +1280,12 @@ export class MovieBotService implements OnModuleInit {
       if (!this.checkOwner(ctx)) return;
       const input = ctx.message.text.split(' ').slice(1).join(' ');
       if (!input)
-        return ctx.reply('⚠️ Please provide a movie name.\nEg: /dm <movieName>', {
-          parse_mode: 'HTML',
-        });
+        return ctx.reply(
+          '⚠️ Please provide a movie name.\nEg: /dm <movieName>',
+          {
+            parse_mode: 'HTML',
+          },
+        );
       await this.movieModel.deleteOne({ name: input });
       await ctx.reply('✅ Movie Deleted Successfully', { parse_mode: 'HTML' });
     } catch (err) {
@@ -1316,7 +1387,11 @@ export class MovieBotService implements OnModuleInit {
         doc.poster.chatId,
         doc.poster.messageId,
       );
-      await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, FILE_TTL_MS);
+      await this.saveTempMessage(
+        ctx.chat.id,
+        posterMsg.message_id,
+        FILE_TTL_MS,
+      );
     }
   }
 
@@ -1327,7 +1402,12 @@ export class MovieBotService implements OnModuleInit {
         file.chatId,
         file.messageId,
       );
-      await this.saveTempMessage(ctx.chat.id, message.message_id, FILE_TTL_MS, ctx.from.id);
+      await this.saveTempMessage(
+        ctx.chat.id,
+        message.message_id,
+        FILE_TTL_MS,
+        ctx.from.id,
+      );
     }
     await this.replyFilesSent(ctx, name);
   }
@@ -1338,7 +1418,12 @@ export class MovieBotService implements OnModuleInit {
       file.chatId,
       file.messageId,
     );
-    await this.saveTempMessage(ctx.chat.id, message.message_id, FILE_TTL_MS, ctx.from.id);
+    await this.saveTempMessage(
+      ctx.chat.id,
+      message.message_id,
+      FILE_TTL_MS,
+      ctx.from.id,
+    );
     await this.replyFilesSent(ctx, name);
   }
 
@@ -1350,7 +1435,12 @@ export class MovieBotService implements OnModuleInit {
         `<b>Please forward to Saved Messages or your friends.</b>`,
       { parse_mode: 'HTML' },
     );
-    await this.saveTempMessage(ctx.chat.id, successMsg.message_id, FILE_TTL_MS, ctx.from.id);
+    await this.saveTempMessage(
+      ctx.chat.id,
+      successMsg.message_id,
+      FILE_TTL_MS,
+      ctx.from.id,
+    );
   }
 
   private async replyNotFound(ctx: any, searchName: string) {
@@ -1403,7 +1493,12 @@ export class MovieBotService implements OnModuleInit {
         parse_mode: 'HTML',
         reply_markup: { inline_keyboard: buttons },
       });
-      await this.saveTempMessage(ctx.chat.id, msg.message_id, FILE_TTL_MS, ctx.from.id);
+      await this.saveTempMessage(
+        ctx.chat.id,
+        msg.message_id,
+        FILE_TTL_MS,
+        ctx.from.id,
+      );
     }
   }
 
