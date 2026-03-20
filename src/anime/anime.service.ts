@@ -118,7 +118,7 @@ export class AnimeService implements OnModuleInit {
     {
       id: '-1003624602414',
       text: 'Main Channel',
-      url: 'https://t.me/LFT_Anime',
+      url: 'https://t.me/LFT_Movie',
     },
   ]; // 🔴 unga rendu channel usernames
 
