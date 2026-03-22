@@ -7,6 +7,7 @@ export class TempMessage extends Document {
   @Prop({ required: true }) messageId: number;
   @Prop() userId: number;
   @Prop({ required: true }) expireAt: Date;
+  @Prop({ default: 'movie' }) botType: 'movie' | 'anime';
 }
 
 export const TempMessageSchema = SchemaFactory.createForClass(TempMessage);
