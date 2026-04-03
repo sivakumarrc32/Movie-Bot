@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { UploadBotModule } from './upload-bot/upload-bot.module';
+// import { UploadBotModule } from './upload-bot/upload-bot.module';
 import { MovieBotModule } from './movie-bot/movie-bot.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppService } from './app.service';
@@ -18,7 +18,7 @@ import { AnimeModule } from './anime/anime.module';
         uri: configService.get<string>('MONGO_URI'),
       }),
     }),
-    UploadBotModule,
+    // UploadBotModule,
     MovieBotModule,
     CommonModule,
     ScheduleModule.forRoot(),
