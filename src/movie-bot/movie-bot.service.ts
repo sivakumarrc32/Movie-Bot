@@ -52,6 +52,7 @@ const REQUIRED_CHANNELS: ChannelInfo[] = [
   },
   {
     id: '-1003579412645',
+    
     text: 'Main Channel',
     url: 'https://t.me/+eowduZXbyy40NmZl',
   },
