@@ -1,10 +1,29 @@
+/* eslint-disable prettier/prettier */
 import mongoose from 'mongoose';
 import { Telegraf } from 'telegraf';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const BOT_TOKEN = '8356350231:AAHu0NJetbTPhvWB8Qx_vUSotyqJO7B_PB8';
-const CHANNEL_ID = '-1003389377874';
+// Bug #1 Fixed: Removed hardcoded bot token. Now reads from environment variable.
+const BOT_TOKEN = process.env.MOVIE_BOT_TOKEN;
+if (!BOT_TOKEN) {
+  console.error('❌ MOVIE_NAME_BOT_TOKEN is not set in environment variables.');
+  process.exit(1);
+}
+
+const CHANNEL_ID = process.env.MOVIE_CHANNEL_ID;
+if (!CHANNEL_ID) {
+  console.error('❌ MOVIE_NAME_CHANNEL_ID is not set in environment variables.');
+  process.exit(1);
+}
+
+// Bug #12 Fixed: Bot username now read from environment variable instead of being hardcoded
+// to a stale/wrong bot username (was 'lord_fourth_movie5_bot').
+const BOT_USERNAME = process.env.MOVIE_BOT_USERNAME;
+if (!BOT_USERNAME) {
+  console.error('❌ MOVIE_BOT_USERNAME is not set in environment variables.');
+  process.exit(1);
+}
 
 const bot = new Telegraf(BOT_TOKEN);
 
@@ -32,6 +51,7 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
 async function exportMovieNamesToTelegram() {
   try {
     await mongoose.connect(process.env.MONGO_URI);
@@ -48,7 +68,8 @@ async function exportMovieNamesToTelegram() {
     const movieTexts = movies.map((movie, i) => {
       const encoded = Buffer.from(movie.name, 'utf-8').toString('base64');
       const safeName = escapeHtml(movie.name);
-      return `<b>${i + 1}. ${safeName} → <a href="https://t.me/lord_fourth_movie5_bot?start=${encoded}">Click Here</a></b>`;
+      // Bug #12 Fixed: uses BOT_USERNAME env var instead of hardcoded stale bot username.
+      return `<b>${i + 1}. ${safeName} → <a href="https://t.me/${BOT_USERNAME}?start=${encoded}">Click Here</a></b>`;
     });
 
     const chunkSize = 35;

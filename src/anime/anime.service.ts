@@ -63,7 +63,11 @@ export class AnimeService implements OnModuleInit {
 
       for (const channel of this.channels) {
         const member = await ctx.telegram.getChatMember(channel.id, ctx.from.id);
-        if (member.status === 'left') notJoinedChannels.push(channel);
+        // Bug #6 Fixed: also check 'kicked' status so banned users cannot bypass
+        // the subscription gate (previously only 'left' was checked).
+        if (member.status === 'left' || member.status === 'kicked') {
+          notJoinedChannels.push(channel);
+        }
       }
 
       if (notJoinedChannels.length === 0) return true;
@@ -145,17 +149,22 @@ export class AnimeService implements OnModuleInit {
   //  /start
   // ════════════════════════════════════════════
 
+  /**
+   * Bug #13 Fixed: Removed the double checkSubscription call.
+   * Previously, when a payload was present, checkSubscription was called inside
+   * the `if (payload)` block, and then the code could fall through and call it
+   * again in the non-payload path. Now there is a single check at the top,
+   * and both branches (with payload and without) share it.
+   */
   async start(ctx: any, payload?: string) {
     try {
+      const isJoined = await this.checkSubscription(ctx);
+      if (!isJoined) return;
+
       if (payload) {
-        const isJoined = await this.checkSubscription(ctx);
-        if (!isJoined) return;
         await this.sendAnimeName(ctx, payload);
         return;
       }
-
-      const isJoined = await this.checkSubscription(ctx);
-      if (!isJoined) return;
 
       const userName = ctx.from.username;
       const message = await ctx.replyWithAnimation(
@@ -189,7 +198,6 @@ export class AnimeService implements OnModuleInit {
         },
       );
 
-      // ✅ botType: 'anime'
       await this.saveTempMessage(ctx.chat.id, message.message_id, 5 * 60 * 1000, ctx.from.id);
 
       const user = await this.userModel.findOne({ telegramId: ctx.from.id });
@@ -230,7 +238,8 @@ export class AnimeService implements OnModuleInit {
 
       const buttons: { text: string; callback_data: string }[] = [];
       if (page > 1) buttons.push({ text: '⬅️ Back', callback_data: `list_page_${page - 1}` });
-      buttons.push({ text: `Pages ${page}/${totalPages}`, callback_data: 'noop' });
+      // Bug #15 Fixed (anime side): Unified page label to "Page X/Y".
+      buttons.push({ text: `Page ${page}/${totalPages}`, callback_data: 'noop' });
       if (skip + limit < totalAnimes) buttons.push({ text: 'Next ➡️', callback_data: `list_page_${page + 1}` });
 
       if (isEdit) {
@@ -248,6 +257,11 @@ export class AnimeService implements OnModuleInit {
   //  Plain text → search
   // ════════════════════════════════════════════
 
+  /**
+   * Bug #9 Fixed: The loading animation message (ani) is now deleted in all
+   * code paths — including the success paths — so it never stays visible in
+   * the chat after the result is sent.
+   */
   async sendAnime(ctx: any) {
     if (ctx.message.text.startsWith('/')) return;
 
@@ -260,6 +274,7 @@ export class AnimeService implements OnModuleInit {
       const animes = await this.animeModel.find({ name: { $regex: name, $options: 'i' } });
 
       if (animes.length === 0) {
+        // Bug #9: delete loading animation before showing not-found reply.
         await ctx.deleteMessage(ani.message_id);
         const msg = await ctx.reply(
           `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Anime is not Available in My Database.</b>\n\n<b>Anime Name Must be in Correct Format</b>\n\n <b><u>Examples for Typing</u></b>\n 1.(Anime Name) S01 or (Anime Name) S02 \n2. (Anime Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Anime Available in our bot Using <b> List of Animes</b> </i> \n\n <i>If the Anime is not in the List. Kindly Contact the Admin Using <b>Request Anime</b></i>`,
@@ -275,17 +290,17 @@ export class AnimeService implements OnModuleInit {
             },
           },
         );
-        // ✅ botType: 'anime'
         await this.saveTempMessage(ctx.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
         return;
       }
 
       if (animes.length === 1) {
+        // Bug #9 Fixed: delete loading animation on single-match success path.
+        await ctx.deleteMessage(ani.message_id);
         if (animes[0].poster?.chatId && animes[0].poster?.messageId) {
           const posterMsg = await ctx.telegram.copyMessage(
             ctx.chat.id, animes[0].poster.chatId, animes[0].poster.messageId,
           );
-          // ✅ botType: 'anime'
           await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, 5 * 60 * 1000);
         }
         return this.sendEpisodePage(ctx, animes[0], 0);
@@ -303,11 +318,12 @@ export class AnimeService implements OnModuleInit {
       console.log('BEST MATCH:', bestMatch?.name, bestScore);
 
       if (bestMatch && bestScore >= 90) {
+        // Bug #9 Fixed: delete loading animation on fuzzy-match success path.
+        await ctx.deleteMessage(ani.message_id);
         if (bestMatch.poster?.chatId && bestMatch.poster?.messageId) {
           const posterMsg = await ctx.telegram.copyMessage(
             ctx.chat.id, bestMatch.poster.chatId, bestMatch.poster.messageId,
           );
-          // ✅ botType: 'anime'
           await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, 5 * 60 * 1000);
         }
         return this.sendEpisodePage(ctx, bestMatch, 0);
@@ -319,10 +335,11 @@ export class AnimeService implements OnModuleInit {
       animes.forEach((m) => { list += `• <code>${m.name}</code>\n`; });
 
       const msg = await ctx.reply(`<b>Multiple Animes found</b>\n\n${list}`, { parse_mode: 'HTML' });
-      // ✅ botType: 'anime'
       await this.saveTempMessage(msg.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
     } catch (err) {
       console.error('Anime search error:', err.message);
+      // Best-effort cleanup on error
+      try { await ctx.deleteMessage(ani.message_id); } catch { /* ignore */ }
     }
   }
 
@@ -330,16 +347,29 @@ export class AnimeService implements OnModuleInit {
   //  Deep-link entry
   // ════════════════════════════════════════════
 
+  /**
+   * Bug #3 Fixed: No longer calls this.animeModel.find() with no filter to load
+   * the entire collection into memory. Uses a regex query to narrow candidates
+   * first, then fuzzy-matches only those documents.
+   */
   async sendAnimeName(ctx: any, name?: string) {
     const ani = await ctx.replyWithAnimation(
       'CAACAgUAAxkBAAIBpmje0EtKLDDHmnxLwL1Y8l7HtN0LAAJ9GQACSsz4Vv2odmJpcRPVNgQ',
     );
 
     try {
-      const searchText = name?.trim().toLowerCase();
-      const animes = await this.animeModel.find();
+      const searchText = name?.trim() ?? '';
+      if (!searchText) {
+        await ctx.deleteMessage(ani.message_id);
+        return;
+      }
 
-      if (animes.length === 0) {
+      // Bug #3 Fixed: query with regex filter first, then fuzzy-match the subset.
+      const candidates = await this.animeModel.find({
+        name: { $regex: this.escapeRegex(searchText), $options: 'i' },
+      });
+
+      if (candidates.length === 0) {
         await ctx.deleteMessage(ani.message_id);
         const msg = await ctx.reply(
           `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Anime is not Available in My Database.</b>\n\n<b>Anime Name Must be in Correct Format</b>\n\n <b><u>Examples for Typing</u></b>\n 1.(Anime Name) S01 or (Anime Name) S02 \n2. (Anime Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Anime Available in our bot Using <b> List of Animes</b> </i> \n\n <i>If the Anime is not in the List. Kindly Contact the Admin Using <b>Request Anime</b></i>`,
@@ -355,35 +385,34 @@ export class AnimeService implements OnModuleInit {
             },
           },
         );
-        // ✅ botType: 'anime'
         await this.saveTempMessage(ctx.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
         return;
       }
 
-      // 🔥 Fuzzy match
+      // 🔥 Fuzzy match over the regex-filtered candidates
       let bestMatch: Anime | null = null;
       let bestScore = 0;
 
-      for (const anime of animes) {
-        if (!searchText) return;
-        const score = ratio(searchText, anime.name.toLowerCase());
+      for (const anime of candidates) {
+        const score = ratio(searchText.toLowerCase(), anime.name.toLowerCase());
         if (score > bestScore) { bestScore = score; bestMatch = anime; }
       }
 
       console.log('BEST MATCH:', bestMatch?.name, bestScore);
 
       if (bestMatch && bestScore >= 90) {
+        // Bug #9 Fixed (deep-link path): delete loading animation on success.
+        await ctx.deleteMessage(ani.message_id);
         if (bestMatch.poster?.chatId && bestMatch.poster?.messageId) {
           const posterMsg = await ctx.telegram.copyMessage(
             ctx.chat.id, bestMatch.poster.chatId, bestMatch.poster.messageId,
           );
-          // ✅ botType: 'anime'
           await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, 5 * 60 * 1000);
         }
         return this.sendEpisodePage(ctx, bestMatch, 0);
       }
 
-      // ❌ No confident match
+      // ❌ No confident match — fall back to showing all candidates
       await ctx.deleteMessage(ani.message_id);
       const msg = await ctx.reply(
         `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Anime is not Available in My Database.</b>\n\n<b>Anime Name Must be in Correct Format</b>\n\n<b><u>Examples for Typing</u></b>\n 1.(Web Series Name) S01 or (Web Series Name) S02 \n2. (Anime Name) \n3. (Web Series Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Anime Available in our bot Using <b> List of Animes</b> </i> \n\n <i>If the Anime is not in the List. Kindly Contact the Admin Using <b>Request Anime</b></i>`,
@@ -399,10 +428,10 @@ export class AnimeService implements OnModuleInit {
           },
         },
       );
-      // ✅ botType: 'anime'
       await this.saveTempMessage(msg.chat.id, msg.message_id, 5 * 60 * 1000);
     } catch (err) {
       console.error('Anime search error:', err.message);
+      try { await ctx.deleteMessage(ani.message_id); } catch { /* ignore */ }
     }
   }
 
@@ -429,7 +458,6 @@ export class AnimeService implements OnModuleInit {
         '<u> <b>Available Commands</b> </u>\n\n👉🏻 1. /list -Use this command to see all available animes.\n\n👉🏻 2. /help - To view the commands available in this bot \n\n✨ Just type the anime name to get anime instantly!\n\n <i><b>Note :</b> if you know the anime name then type the anime name corretly and get anime files</i> \n\n<i>if you don\'t know the exact moive name follow the steps below</i>\n\n<u>Follow the Steps to Get the Anime File</u>\n\n<b>Step - 1 :</b> Use /list Command to get the anime list.\n\n<b>Step - 2 :</b> If the anime Available in the list <b>Press the anime Name It Will Be Copied</b> \n\n<b>Step - 3 :</b> Paste and Send the anime You Will Get the Files \n\n<b>Step - 4 :</b> After Getting the File Forward to Your Friends or In Your Saved Message.\n\n <b> Because Files Will Be Deleted After 5 Mins. For Copyrights Issues</b> \n\n\n <i><b>Thanks For Using Our Bot....❤️</b></i>',
         { parse_mode: 'HTML' },
       );
-      // ✅ botType: 'anime'
       await this.saveTempMessage(ctx.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
     } catch (err) {
       console.error('Help command error:', err.message);
@@ -437,8 +465,11 @@ export class AnimeService implements OnModuleInit {
   }
 
   async about(ctx: any) {
-    await ctx.answerCbQuery();
+    // Bug #14 Fixed: answerCbQuery is now inside the try/catch block so that
+    // if the callback query has expired (Telegraf throws), the error is caught
+    // and logged rather than being an unhandled rejection.
     try {
+      await ctx.answerCbQuery();
       const msg = await ctx.editMessageCaption(
         `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_anime_bot">Anime Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
         {
@@ -446,13 +477,15 @@ export class AnimeService implements OnModuleInit {
           reply_markup: { inline_keyboard: [[{ text: '⬅️ Back', callback_data: 'backToStart' }]] },
         },
       );
-      // ✅ botType: 'anime'
       await this.saveTempMessage(ctx.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
     } catch (err) {
       console.error('About command error:', err.message);
     }
   }
 
+  /**
+   * Bug #14 Fixed (backToStart): answerCbQuery is now inside try/catch.
+   */
   async backToStart(ctx: any) {
     try {
       await ctx.answerCbQuery();
@@ -540,7 +573,6 @@ export class AnimeService implements OnModuleInit {
 
         for (const file of anime.files) {
           const message = await ctx.telegram.copyMessage(ctx.chat.id, file.chatId, file.messageId);
-          // ✅ botType: 'anime'
           await this.saveTempMessage(ctx.chat.id, message.message_id, 5 * 60 * 1000, ctx.from.id);
         }
 
@@ -548,7 +580,6 @@ export class AnimeService implements OnModuleInit {
           `✅ <b>Anime "${anime.name}" sent successfully!</b>\n\n 🙇🏻<b>"Episode orders are not proper, please check Sorry for the inconvenience "</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
           { parse_mode: 'HTML' },
         );
-        // ✅ botType: 'anime'
         await this.saveTempMessage(ctx.chat.id, successMsg.message_id, 5 * 60 * 1000, ctx.from.id);
         return;
       }
@@ -564,14 +595,12 @@ export class AnimeService implements OnModuleInit {
         if (!file) return ctx.reply('❌ Episode not found.');
 
         const msg = await ctx.telegram.copyMessage(ctx.chat.id, file.chatId, file.messageId);
-        // ✅ botType: 'anime'
         await this.saveTempMessage(ctx.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
 
         const successMsg = await ctx.reply(
           `✅ <b>Anime "${anime.name}" sent successfully!</b>\n\n 🙇🏻<b>"Episode orders are not proper, please check Sorry for the inconvenience "</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
           { parse_mode: 'HTML' },
         );
-        // ✅ botType: 'anime'
         await this.saveTempMessage(ctx.chat.id, successMsg.message_id, 5 * 60 * 1000, ctx.from.id);
         return;
       }
@@ -611,6 +640,7 @@ export class AnimeService implements OnModuleInit {
 
     const navButtons: any[] = [];
     if (page > 0) navButtons.push({ text: '⬅️ Prev', callback_data: `page_${anime._id}_${page - 1}` });
+    // Bug #15 Fixed (anime side): Unified page label to "Page X/Y".
     navButtons.push({ text: `Page ${page + 1}/${totalPages}`, callback_data: 'noop' });
     if (end < anime.files.length) {
       console.log('end < anime.files.length', end, anime.files.length);
@@ -628,7 +658,6 @@ export class AnimeService implements OnModuleInit {
         parse_mode: 'HTML',
         reply_markup: { inline_keyboard: buttons },
       });
-      // ✅ botType: 'anime'
       await this.saveTempMessage(ctx.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
     }
   }
@@ -651,10 +680,9 @@ export class AnimeService implements OnModuleInit {
   }
 
   // ════════════════════════════════════════════
-  //  saveTempMessage helper  ← replaces all inline tempMessageModel.create()
+  //  Helpers
   // ════════════════════════════════════════════
 
-  // ✅ Single place where botType: 'anime' is always set
   private async saveTempMessage(
     chatId: number,
     messageId: number,
@@ -666,7 +694,11 @@ export class AnimeService implements OnModuleInit {
       messageId,
       userId,
       expireAt: new Date(Date.now() + ttlMs),
-      botType: 'anime', // ✅ always 'anime' in this service
+      botType: 'anime',
     });
+  }
+
+  private escapeRegex(text: string): string {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 }
