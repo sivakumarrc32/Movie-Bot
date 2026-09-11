@@ -33,30 +33,6 @@ type ChannelInfo = {
 //  Constants
 // ─────────────────────────────────────────────
 
-/** Channels users must join before using the bot */
-const REQUIRED_CHANNELS: ChannelInfo[] = [
-  {
-    id: '-1003261050452',
-    text: '📢 Join Channel 1',
-    url: 'https://t.me/LFT_Movie',
-  },
-  {
-    id: '-1003326848627',
-    text: '📢 Join Channel 2',
-    url: 'https://t.me/+Ekzqobyp6GY4OGE9',
-  },
-  {
-    id: '-1003847082548',
-    text: '📢 Join Channel 3',
-    url: 'https://t.me/+5It5cJtwFgU4NTM1',
-  },
-  {
-    id: '-1003579412645',
-    text: 'Main Channel',
-    url: 'https://t.me/+eowduZXbyy40NmZl',
-  },
-];
-
 /** Random emojis used when reacting to a user's message */
 const REACTION_EMOJIS = [
   '👍',
@@ -76,28 +52,6 @@ const REACTION_EMOJIS = [
   '🤬',
   '👏',
 ];
-
-/** How many files to show per page in the episode selector */
-const PAGE_SIZE = 10;
-
-/** How many files to list per /list page */
-const LIST_PAGE_SIZE = 15;
-
-/** Default TTL for temp messages (2 minutes) */
-const DEFAULT_TTL_MS = 2 * 60 * 1000;
-
-/** TTL for movie/file messages (5 minutes – copyright) */
-const FILE_TTL_MS = 5 * 60 * 1000;
-
-/** Minimum fuzzy-match score to treat a result as confident */
-const FUZZY_MIN_SCORE = 90;
-
-/**
- * How many results to show per page in both picker flows:
- *   - sendMoviePickerPage        (deep-link / mpick_ callbacks)
- *   - sendMultipleResultsPicker  (plain-text / smpick_ callbacks)
- */
-const PICKER_PAGE_SIZE = 5;
 
 // ─────────────────────────────────────────────
 //  Service
@@ -120,7 +74,125 @@ export class MovieBotService implements OnModuleInit {
     private configService: ConfigService,
   ) {
     this.bot = new Telegraf(this.configService.get('MOVIE_BOT_TOKEN')!);
-    this.ownerId = 992923409;
+    this.ownerId =
+      Number(this.configService.get('BOT_OWNER_TELEGRAM_ID')) || 992923409;
+  }
+
+  // ─────────────────────────────────────────────
+  //  Dynamic Configuration Getters
+  // ─────────────────────────────────────────────
+
+  public get requiredChannels(): ChannelInfo[] {
+    try {
+      const raw = this.configService.get<string>(
+        'MOVIE_BOT_FORCE_SUB_CHANNELS',
+      );
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.error(
+        'Failed to parse MOVIE_BOT_FORCE_SUB_CHANNELS from .env:',
+        e,
+      );
+    }
+    return [
+      {
+        id: '-1003261050452',
+        text: '📢 Join Channel 1',
+        url: 'https://t.me/LFT_Movie',
+      },
+      {
+        id: '-1003326848627',
+        text: '📢 Join Channel 2',
+        url: 'https://t.me/+Ekzqobyp6GY4OGE9',
+      },
+      {
+        id: '-1003847082548',
+        text: '📢 Join Channel 3',
+        url: 'https://t.me/+5It5cJtwFgU4NTM1',
+      },
+      {
+        id: '-1003579412645',
+        text: 'Main Channel',
+        url: 'https://t.me/+eowduZXbyy40NmZl',
+      },
+    ];
+  }
+
+  public get pageSize(): number {
+    return Number(this.configService.get('FILES_PER_PAGE')) || 10;
+  }
+
+  public get listPageSize(): number {
+    return Number(this.configService.get('MOVIES_PER_LIST_PAGE')) || 15;
+  }
+
+  public get pickerPageSize(): number {
+    return (
+      Number(this.configService.get('SEARCH_RESULTS_PER_PICKER_PAGE')) || 5
+    );
+  }
+
+  public get defaultTtlMs(): number {
+    return (
+      Number(
+        this.configService.get('AUTO_DELETE_NORMAL_MESSAGE_TIMEOUT_MS'),
+      ) || 2 * 60 * 1000
+    );
+  }
+
+  public get fileTtlMs(): number {
+    return (
+      Number(this.configService.get('AUTO_DELETE_FILE_MESSAGE_TIMEOUT_MS')) ||
+      5 * 60 * 1000
+    );
+  }
+
+  public get fuzzyMinScore(): number {
+    return Number(this.configService.get('FUZZY_SEARCH_MIN_SCORE')) || 90;
+  }
+
+  public get startGifId(): string {
+    return (
+      this.configService.get<string>('MOVIE_BOT_START_GIF_ID') ||
+      'CgACAgUAAxkBAAMDaZOD5ZrjO1oq0Vf35zc94pMr85cAAl0aAAIat6FUhnSrPBydTqM6BA'
+    );
+  }
+
+  public get supportGroupUrl(): string {
+    return (
+      this.configService.get<string>('SUPPORT_GROUP_URL') ||
+      'https://t.me/+JH-KR5ZMJUQyNzI1'
+    );
+  }
+
+  public get developerUrl(): string {
+    return (
+      this.configService.get<string>('DEVELOPER_TELEGRAM_URL') ||
+      'https://t.me/Lord_Fourth04'
+    );
+  }
+
+  public get promoChannelUrl(): string {
+    return (
+      this.configService.get<string>('PROMO_CHANNEL_URL') ||
+      'https://t.me/LordFourthMovieTamil'
+    );
+  }
+
+  public get movieBotUsername(): string {
+    return (
+      this.boturl ||
+      this.configService.get<string>('MOVIE_BOT_USERNAME') ||
+      'lord_fourth_movie6_bot'
+    );
+  }
+
+  public get animeBotUsername(): string {
+    return (
+      this.animeboturl ||
+      this.configService.get<string>('ANIME_BOT_USERNAME') ||
+      'lord_fourth_anime_bot'
+    );
   }
 
   // ════════════════════════════════════════════
@@ -233,7 +305,7 @@ export class MovieBotService implements OnModuleInit {
   private checkOwner(ctx: any): boolean {
     if (ctx.from.id !== this.ownerId) {
       ctx.reply(
-        '<b>🚫 You are not authorized to use this bot.</b>\n\n\n @lord_fourth_movie6_bot Here You Can Get the Movies',
+        `<b>🚫 You are not authorized to use this bot.</b>\n\n\n @${this.movieBotUsername} Here You Can Get the Movies`,
         { parse_mode: 'HTML' },
       );
       return false;
@@ -250,12 +322,11 @@ export class MovieBotService implements OnModuleInit {
     try {
       const notJoined: ChannelInfo[] = [];
 
-      for (const channel of REQUIRED_CHANNELS) {
+      for (const channel of this.requiredChannels) {
         const member = await ctx.telegram.getChatMember(
           channel.id,
           ctx.from.id,
         );
-        // Bug #6 note: this service already correctly checks both 'left' and 'kicked'.
         if (member.status === 'left' || member.status === 'kicked') {
           notJoined.push(channel);
         }
@@ -275,7 +346,7 @@ export class MovieBotService implements OnModuleInit {
       keyboard.push([{ text: '🔄 Try Again', callback_data: 'check_join' }]);
 
       await ctx.replyWithAnimation(
-        'CgACAgUAAxkBAAMDaZOD5ZrjO1oq0Vf35zc94pMr85cAAl0aAAIat6FUhnSrPBydTqM6BA',
+        this.startGifId,
         {
           caption:
             `Hi ${ctx.from.first_name},\n\n` +
@@ -310,7 +381,7 @@ export class MovieBotService implements OnModuleInit {
 
       const userName = ctx.from.username;
       const msg = await ctx.replyWithAnimation(
-        'CgACAgUAAxkBAAMDaZOD5ZrjO1oq0Vf35zc94pMr85cAAl0aAAIat6FUhnSrPBydTqM6BA',
+        this.startGifId,
         {
           caption:
             `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a>\n\n` +
@@ -325,11 +396,11 @@ export class MovieBotService implements OnModuleInit {
               [
                 {
                   text: 'Movie Bot',
-                  url: 'https://t.me/lord_fourth_movie6_bot',
+                  url: `https://t.me/${this.movieBotUsername}`,
                 },
                 {
                   text: 'Anime Bot',
-                  url: 'https://t.me/lord_fourth_anime_bot',
+                  url: `https://t.me/${this.animeBotUsername}`,
                 },
               ],
               [
@@ -338,9 +409,9 @@ export class MovieBotService implements OnModuleInit {
               ],
               [
                 { text: '👨‍💻 About Bot', callback_data: 'about' },
-                { text: '⚙️ Support', url: 'https://t.me/+JH-KR5ZMJUQyNzI1' },
+                { text: '⚙️ Support', url: this.supportGroupUrl },
               ],
-              [{ text: 'Developer', url: 'https://t.me/Lord_Fourth04' }],
+              [{ text: 'Developer', url: this.developerUrl }],
             ],
           },
         },
@@ -349,7 +420,7 @@ export class MovieBotService implements OnModuleInit {
       await this.saveTempMessage(
         ctx.chat.id,
         msg.message_id,
-        DEFAULT_TTL_MS,
+        this.defaultTtlMs,
         ctx.from.id,
       );
       await this.saveUserIfNew(ctx);
@@ -382,7 +453,7 @@ export class MovieBotService implements OnModuleInit {
       await this.saveTempMessage(
         ctx.chat.id,
         msg.message_id,
-        DEFAULT_TTL_MS,
+        this.defaultTtlMs,
         ctx.from.id,
       );
     } catch (err) {
@@ -396,13 +467,13 @@ export class MovieBotService implements OnModuleInit {
 
   async sendMovieList(ctx: any, page = 1, isEdit = false) {
     try {
-      const skip = (page - 1) * LIST_PAGE_SIZE;
+      const skip = (page - 1) * this.listPageSize;
       const totalMovies = await this.movieModel.countDocuments();
-      const totalPages = Math.ceil(totalMovies / LIST_PAGE_SIZE);
+      const totalPages = Math.ceil(totalMovies / this.listPageSize);
       const movies = await this.movieModel
         .find({}, 'name')
         .skip(skip)
-        .limit(LIST_PAGE_SIZE);
+        .limit(this.listPageSize);
 
       if (!movies.length) {
         return ctx.reply('<b>😢 No movies available.</b>', {
@@ -428,7 +499,7 @@ export class MovieBotService implements OnModuleInit {
         text: `Page ${page}/${totalPages}`,
         callback_data: 'noop',
       });
-      if (skip + LIST_PAGE_SIZE < totalMovies)
+      if (skip + this.listPageSize < totalMovies)
         navButtons.push({
           text: 'Next ➡️',
           callback_data: `list_page_${page + 1}`,
@@ -490,7 +561,7 @@ export class MovieBotService implements OnModuleInit {
         await this.saveTempMessage(
           warnMsg.chat.id,
           warnMsg.message_id,
-          FILE_TTL_MS,
+          this.fileTtlMs,
           ctx.from.id,
         );
         return;
@@ -514,10 +585,13 @@ export class MovieBotService implements OnModuleInit {
           userId: ctx.from.id.toString(),
           userName: ctx.from.first_name || ctx.from.username,
         });
-        // Bug #7 Fixed: pass ctx.from.id as userId so the temp message is linked to
-        // the user (was called without userId, saving undefined to the DB).
         const msg = await this.replyNotFound(ctx, searchName);
-        await this.saveTempMessage(ctx.chat.id, msg.message_id, DEFAULT_TTL_MS, ctx.from.id);
+        await this.saveTempMessage(
+          ctx.chat.id,
+          msg.message_id,
+          this.defaultTtlMs,
+          ctx.from.id,
+        );
         return;
       }
 
@@ -530,7 +604,13 @@ export class MovieBotService implements OnModuleInit {
       // ── Multiple results → paginated picker ──
       if (movieMatches.length > 1 || animeMatches.length > 1) {
         await ctx.react('🤔');
-        await this.sendMultipleResultsPicker(ctx, movieMatches, animeMatches, 0, searchName);
+        await this.sendMultipleResultsPicker(
+          ctx,
+          movieMatches,
+          animeMatches,
+          0,
+          searchName,
+        );
         return;
       }
 
@@ -558,19 +638,6 @@ export class MovieBotService implements OnModuleInit {
 
   /**
    * Called when the bot is opened via a deep-link (/start <payload>).
-   *
-   * Three payload formats (all base64-encoded):
-   *   1. MongoDB ObjectId   → base64("id:<_id>")        ← from picker links (NEW)
-   *   2. Plain name         → base64(movieName)          ← typed-name or old links
-   *   3. name + year        → base64(movieName|year)     ← legacy, kept for back-compat
-   *
-   * Format 1 is the primary path for picker-generated links. Because the _id
-   * uniquely identifies the document, two movies with the same name/year (e.g.
-   * Tamil audio vs Hindi audio) will always resolve to the correct one.
-   *
-   * Bug #2 Fixed: No longer loads the entire movies collection with find().
-   * Bug (duplicate doc): Picker links now encode the document _id so clicking
-   *   the 2nd result no longer returns the 1st document.
    */
   async sendMovieName(ctx: any, name: string) {
     try {
@@ -582,9 +649,13 @@ export class MovieBotService implements OnModuleInit {
           await this.tryCopyPoster(ctx, movie);
           return this.sendEpisodePage(ctx, movie, 0);
         }
-        // If the id lookup fails (deleted doc), fall through to name search
         const msg = await this.replyNotFound(ctx, docId);
-        await this.saveTempMessage(msg.chat.id, msg.message_id, DEFAULT_TTL_MS, ctx.from.id);
+        await this.saveTempMessage(
+          msg.chat.id,
+          msg.message_id,
+          this.defaultTtlMs,
+          ctx.from.id,
+        );
         return;
       }
 
@@ -600,25 +671,30 @@ export class MovieBotService implements OnModuleInit {
       // ── Format 3: exact lookup when name|year payload ────────────────────────
       if (yearFromPayload) {
         const exact = await this.movieModel.findOne({
-          name: { $regex: `^${this.escapeRegex(nameFromPayload)}$`, $options: 'i' },
+          name: {
+            $regex: `^${this.escapeRegex(nameFromPayload)}$`,
+            $options: 'i',
+          },
           year: yearFromPayload,
         });
         if (exact) {
           await this.tryCopyPoster(ctx, exact);
           return this.sendEpisodePage(ctx, exact, 0);
         }
-        // Falls through to fuzzy as safety net
       }
 
-      // Bug #2 Fixed: Query the DB with a regex filter first, then fuzzy-match
-      // only the returned subset — avoids loading the entire collection into memory.
       const candidates = await this.movieModel.find({
         name: { $regex: this.escapeRegex(nameFromPayload), $options: 'i' },
       });
 
       if (candidates.length === 0) {
         const msg = await this.replyNotFound(ctx, nameFromPayload);
-        await this.saveTempMessage(msg.chat.id, msg.message_id, DEFAULT_TTL_MS, ctx.from.id);
+        await this.saveTempMessage(
+          msg.chat.id,
+          msg.message_id,
+          this.defaultTtlMs,
+          ctx.from.id,
+        );
         return;
       }
 
@@ -626,22 +702,16 @@ export class MovieBotService implements OnModuleInit {
       const matches: { doc: Movie; score: number }[] = [];
       for (const movie of candidates) {
         const score = ratio(searchText, movie.name.toLowerCase());
-        if (score >= FUZZY_MIN_SCORE) {
+        if (score >= this.fuzzyMinScore) {
           matches.push({ doc: movie, score });
         }
       }
       matches.sort((a, b) => b.score - a.score);
 
-      // If fuzzy yields nothing but DB had candidates, fall back to all candidates
       const finalMatches =
         matches.length > 0
           ? matches
           : candidates.map((doc) => ({ doc, score: 0 }));
-
-      console.log(
-        'sendMovieName matches:',
-        finalMatches.map((m) => `${m.doc.name} (${m.score})`),
-      );
 
       if (finalMatches.length === 1) {
         await this.tryCopyPoster(ctx, finalMatches[0].doc);
@@ -660,25 +730,20 @@ export class MovieBotService implements OnModuleInit {
   //  Callback prefix: mpick_<page>
   // ════════════════════════════════════════════
 
-  /**
-   * Renders one page of the deep-link multiple-match picker.
-   * Each link encodes base64(name|year) for exact resolution on click.
-   */
   private async sendMoviePickerPage(
     ctx: any,
     matches: { doc: any; score: number }[],
     page: number,
     isEdit = false,
   ) {
-    const start = page * PICKER_PAGE_SIZE;
-    const end = start + PICKER_PAGE_SIZE;
+    const start = page * this.pickerPageSize;
+    const end = start + this.pickerPageSize;
     const pageItems = matches.slice(start, end);
-    const totalPages = Math.ceil(matches.length / PICKER_PAGE_SIZE);
+    const totalPages = Math.ceil(matches.length / this.pickerPageSize);
 
     let text =
       `<b>Multiple Results Found</b>\n` +
       `<i>Please choose the exact movie</i>\n\n` +
-      // Bug #15 Fixed: Unified page label to "Page X/Y".
       `🎬 <b>Movies (Page ${page + 1}/${totalPages})</b>\n\n`;
 
     for (let i = 0; i < pageItems.length; i++) {
@@ -687,10 +752,8 @@ export class MovieBotService implements OnModuleInit {
       const audio = this.extractAudio(movie) || 'Unknown';
       const qual = this.extractQuality(movie) || 'Unknown';
 
-      // Duplicate-doc fix: encode "id:<_id>" so every link resolves its unique
-      // document even when two docs share the same name and year.
       const enc = Buffer.from(`id:${movie._id}`, 'utf-8').toString('base64');
-      const link = `https://t.me/${this.boturl}?start=${enc}`;
+      const link = `https://t.me/${this.movieBotUsername}?start=${enc}`;
 
       text += `${start + i + 1}.┎ <b>${this.escapeHtml(movie.name)}</b> ➻ <a href="${link}">Click Here</a>\n`;
       text += `   ┃\n`;
@@ -706,7 +769,6 @@ export class MovieBotService implements OnModuleInit {
     const navButtons: any[] = [];
     if (page > 0)
       navButtons.push({ text: '⬅️ Prev', callback_data: `mpick_${page - 1}` });
-    // Bug #15 Fixed: Unified page label to "Page X/Y".
     navButtons.push({
       text: `Page ${page + 1}/${totalPages}`,
       callback_data: 'noop',
@@ -727,7 +789,7 @@ export class MovieBotService implements OnModuleInit {
       await this.saveTempMessage(
         sent.chat.id,
         sent.message_id,
-        FILE_TTL_MS,
+        this.fileTtlMs,
         ctx.from.id,
       );
 
@@ -738,46 +800,31 @@ export class MovieBotService implements OnModuleInit {
       await this.saveTempMessage(
         warn.chat.id,
         warn.message_id,
-        FILE_TTL_MS,
+        this.fileTtlMs,
         ctx.from.id,
       );
     }
   }
 
-  /**
-   * Handles mpick_<page> pagination callbacks (deep-link picker).
-   *
-   * Bug #4 Fixed: No longer tries to recover the search query by scraping the
-   * bot's own message text (fragile, breaks if movie name contains '➻' or if
-   * Telegram truncates the message). Instead, the picker page index is encoded
-   * in the callback data and the original search query is re-derived from the
-   * embedded "🔍" header line that sendMoviePickerPage now writes into the
-   * message — matching the same recovery method used by handleSendMultiplePicker,
-   * which is reliable because the 🔍 line contains only the plain search query.
-   *
-   * For the deep-link picker specifically, the query is recovered from the
-   * message text's first bold movie name line, decoded via the href, or — most
-   * robustly — re-queried using the same regex+fuzzy pipeline used in
-   * sendMovieName so the result set is always consistent.
-   */
   private async handleMultipleMoviePicker(ctx: any) {
     try {
       await ctx.answerCbQuery();
       const data: string = ctx.callbackQuery.data; // mpick_<page>
       const page = parseInt(data.split('_')[1], 10);
 
-      // Bug #4 Fixed: Recover query from the embedded 🔍 header line instead of
-      // trying to parse a movie name out of the box-drawing character rows
-      // (which breaks when names contain special characters or messages get trimmed).
       const msgText: string = ctx.callbackQuery.message?.text || '';
       const headerLine = msgText.split('\n').find((l) => l.startsWith('🔍'));
       if (!headerLine) {
-        return ctx.answerCbQuery('⚠️ Could not recover original query. Please search again.');
+        return ctx.answerCbQuery(
+          '⚠️ Could not recover original query. Please search again.',
+        );
       }
 
       const searchName = headerLine.replace(/^🔍\s*/, '').trim();
       if (!searchName) {
-        return ctx.answerCbQuery('⚠️ Could not recover original query. Please search again.');
+        return ctx.answerCbQuery(
+          '⚠️ Could not recover original query. Please search again.',
+        );
       }
 
       const candidates = await this.movieModel.find({
@@ -789,7 +836,7 @@ export class MovieBotService implements OnModuleInit {
           doc,
           score: ratio(searchName.toLowerCase(), doc.name.toLowerCase()),
         }))
-        .filter((r) => r.score >= FUZZY_MIN_SCORE)
+        .filter((r) => r.score >= this.fuzzyMinScore)
         .sort((a, b) => b.score - a.score);
 
       if (matches.length === 0 && candidates.length > 0) {
@@ -811,15 +858,6 @@ export class MovieBotService implements OnModuleInit {
   //  Callback prefix: smpick_<page>
   // ════════════════════════════════════════════
 
-  /**
-   * Renders one page of the plain-text search multiple-match picker.
-   *
-   * Movies and animes are merged into one flat list (movies first, then
-   * animes), paginated at PICKER_PAGE_SIZE per page. Uses smpick_ callback
-   * prefix to avoid collision with the deep-link picker (mpick_).
-   *
-   * @param isEdit  true when called from a pagination callback (edits in place).
-   */
   private async sendMultipleResultsPicker(
     ctx: any,
     movieMatches: { doc: any; score: number }[],
@@ -828,44 +866,39 @@ export class MovieBotService implements OnModuleInit {
     searchName: string,
     isEdit = false,
   ) {
-    // Merge into one flat array: movies first, then animes
     const allItems: { doc: any; score: number; type: 'movie' | 'anime' }[] = [
       ...movieMatches.map((m) => ({ ...m, type: 'movie' as const })),
       ...animeMatches.map((a) => ({ ...a, type: 'anime' as const })),
     ];
 
     const totalItems = allItems.length;
-    const totalPages = Math.ceil(totalItems / PICKER_PAGE_SIZE);
-    const start = page * PICKER_PAGE_SIZE;
-    const end = start + PICKER_PAGE_SIZE;
+    const totalPages = Math.ceil(totalItems / this.pickerPageSize);
+    const start = page * this.pickerPageSize;
+    const end = start + this.pickerPageSize;
     const pageItems = allItems.slice(start, end);
 
     let text =
       `<b>Multiple Results Found</b>\n` +
       `<i>Please choose the exact Movie or Anime</i>\n\n` +
-      // Bug #5 Fixed: The 🔍 header line is the sole source of truth for
-      // recovering the original query during smpick_ pagination. It must
-      // be preserved exactly as written here so handleSendMultiplePicker
-      // can reliably extract it without scraping formatted movie-name rows.
       `🔍 ${this.escapeHtml(searchName)}\n` +
-      // Bug #15 Fixed: Unified page label to "Page X/Y".
       `📋 <b>Results (Page ${page + 1}/${totalPages})</b>\n\n`;
 
     for (let i = 0; i < pageItems.length; i++) {
       const item = pageItems[i];
       const globalIdx = start + i + 1;
-      const year: number | null = (item.doc).year ?? null;
+      const year: number | null = item.doc.year ?? null;
       const audio = this.extractAudio(item.doc) || 'Unknown';
       const qual = this.extractQuality(item.doc) || 'Unknown';
 
       if (item.type === 'movie') {
-        // Duplicate-doc fix: encode "id:<_id>" so every link resolves its unique document.
-        const enc = Buffer.from(`id:${item.doc._id}`, 'utf-8').toString('base64');
-        const link = `https://t.me/${this.boturl}?start=${enc}`;
+        const enc = Buffer.from(`id:${item.doc._id}`, 'utf-8').toString(
+          'base64',
+        );
+        const link = `https://t.me/${this.movieBotUsername}?start=${enc}`;
         text += `${globalIdx}.🎬 ┎ <b>${this.escapeHtml(item.doc.name)}</b> ➻ <a href="${link}">Click Here</a>\n`;
       } else {
         const enc = Buffer.from(item.doc.name, 'utf-8').toString('base64');
-        const link = `https://t.me/${this.animeboturl}?start=${enc}`;
+        const link = `https://t.me/${this.animeBotUsername}?start=${enc}`;
         text += `${globalIdx}.🎌 ┎ <b>${this.escapeHtml(item.doc.name)}</b> ➻ <a href="${link}">Click Here</a>\n`;
       }
 
@@ -907,7 +940,7 @@ export class MovieBotService implements OnModuleInit {
       await this.saveTempMessage(
         sent.chat.id,
         sent.message_id,
-        FILE_TTL_MS,
+        this.fileTtlMs,
         ctx.from.id,
       );
 
@@ -921,21 +954,12 @@ export class MovieBotService implements OnModuleInit {
       await this.saveTempMessage(
         warn.chat.id,
         warn.message_id,
-        FILE_TTL_MS,
+        this.fileTtlMs,
         ctx.from.id,
       );
     }
   }
 
-  /**
-   * Handles smpick_<page> pagination callbacks (plain-text picker).
-   *
-   * Bug #5 Fixed: The original query is reliably recovered from the embedded
-   * 🔍 header line (plain text, no formatting characters) rather than trying
-   * to parse a movie name out of box-drawing character rows. The DB query and
-   * fuzzy logic exactly replicate sendMovie() so the result count never changes
-   * between pages.
-   */
   private async handleSendMultiplePicker(ctx: any) {
     try {
       await ctx.answerCbQuery();
@@ -980,7 +1004,12 @@ export class MovieBotService implements OnModuleInit {
       }
 
       await this.sendMultipleResultsPicker(
-        ctx, movieMatches, animeMatches, page, searchName, true,
+        ctx,
+        movieMatches,
+        animeMatches,
+        page,
+        searchName,
+        true,
       );
     } catch (err) {
       console.error('handleSendMultiplePicker error:', err.message);
@@ -991,17 +1020,13 @@ export class MovieBotService implements OnModuleInit {
   //  Episode page  –  Movie
   // ════════════════════════════════════════════
 
-  /**
-   * Sends (or edits) an inline keyboard showing one page of episode/file buttons.
-   * Files are shown in reverse order so the latest episode appears first.
-   */
   private async sendEpisodePage(ctx: any, movie: any, page: number) {
     try {
       const reversedFiles = [...movie.files].reverse();
-      const start = page * PAGE_SIZE;
-      const end = start + PAGE_SIZE;
+      const start = page * this.pageSize;
+      const end = start + this.pageSize;
       const files = reversedFiles.slice(start, end);
-      const totalPages = Math.ceil(movie.files.length / PAGE_SIZE);
+      const totalPages = Math.ceil(movie.files.length / this.pageSize);
 
       const buttons: any[] = [];
 
@@ -1049,10 +1074,10 @@ export class MovieBotService implements OnModuleInit {
   private async sendAnimeEpisodePage(ctx: any, anime: any, page: number) {
     try {
       const reversedFiles = [...anime.files].reverse();
-      const start = page * PAGE_SIZE;
-      const end = start + PAGE_SIZE;
+      const start = page * this.pageSize;
+      const end = start + this.pageSize;
       const files = reversedFiles.slice(start, end);
-      const totalPages = Math.ceil(anime.files.length / PAGE_SIZE);
+      const totalPages = Math.ceil(anime.files.length / this.pageSize);
 
       const buttons: any[] = [];
 
@@ -1181,10 +1206,10 @@ export class MovieBotService implements OnModuleInit {
     await ctx.answerCbQuery();
     try {
       const msg = await ctx.editMessageCaption(
-        `<b>🤖 My Name</b>: <a href="https://t.me/lord_fourth_movie6_bot">Movie Bot</a> ⚡️\n` +
+        `<b>🤖 My Name</b>: <a href="https://t.me/${this.movieBotUsername}">Movie Bot</a> ⚡️\n` +
           `<b>📝 Language</b>: <a href="https://nestjs.com/">Nest JS</a>\n` +
           `<b>🚀 Server</b>: <a href="https://vercel.com/">Vercel</a>\n` +
-          `<b>📢 Channel</b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
+          `<b>📢 Channel</b>: <a href="${this.promoChannelUrl}">Lord Fourth Movie Tamil</a>`,
         {
           parse_mode: 'HTML',
           reply_markup: {
@@ -1197,7 +1222,7 @@ export class MovieBotService implements OnModuleInit {
       await this.saveTempMessage(
         ctx.chat.id,
         msg.message_id,
-        DEFAULT_TTL_MS,
+        this.defaultTtlMs,
         ctx.from.id,
       );
     } catch (err) {
@@ -1224,9 +1249,9 @@ export class MovieBotService implements OnModuleInit {
               ],
               [
                 { text: '👨‍💻 About Bot', callback_data: 'about' },
-                { text: '⚙️ Support', url: 'https://t.me/+JH-KR5ZMJUQyNzI1' },
+                { text: '⚙️ Support', url: this.supportGroupUrl },
               ],
-              [{ text: 'Developer', url: 'https://t.me/Lord_Fourth04' }],
+              [{ text: 'Developer', url: this.developerUrl }],
             ],
           },
         },
@@ -1234,7 +1259,7 @@ export class MovieBotService implements OnModuleInit {
       await this.saveTempMessage(
         ctx.chat.id,
         msg.message_id,
-        DEFAULT_TTL_MS,
+        this.defaultTtlMs,
         ctx.from.id,
       );
     } catch (err) {
@@ -1273,7 +1298,7 @@ export class MovieBotService implements OnModuleInit {
       });
 
       const rm = await ctx.reply(msg, { parse_mode: 'HTML' });
-      await this.saveTempMessage(rm.chat.id, rm.message_id, DEFAULT_TTL_MS);
+      await this.saveTempMessage(rm.chat.id, rm.message_id, this.defaultTtlMs);
     } catch (err) {
       console.error('requestedMovies error:', err);
     }
@@ -1299,11 +1324,6 @@ export class MovieBotService implements OnModuleInit {
     }
   }
 
-  /**
-   * Bug #11 Fixed: /sm now uses case-insensitive regex search (matching the
-   * user-facing search) instead of exact-match { name: input }, which would
-   * silently miss movies with different casing.
-   */
   async searchMovie(ctx: any) {
     try {
       if (!this.checkOwner(ctx)) return;
@@ -1316,7 +1336,6 @@ export class MovieBotService implements OnModuleInit {
           },
         );
 
-      // Bug #11 Fixed: use case-insensitive regex instead of exact match.
       const movies = await this.movieModel.find({
         name: { $regex: input, $options: 'i' },
       });
@@ -1341,12 +1360,6 @@ export class MovieBotService implements OnModuleInit {
     }
   }
 
-  /**
-   * Bug #10 Fixed: /dm now uses case-insensitive regex delete and only replies
-   * "Deleted Successfully" when at least one document was actually removed.
-   * Previously used deleteOne({ name: input }) — exact case-sensitive match —
-   * which would silently do nothing and still reply with a false success message.
-   */
   async deleteMovieInDB(ctx: any) {
     try {
       if (!this.checkOwner(ctx)) return;
@@ -1359,15 +1372,17 @@ export class MovieBotService implements OnModuleInit {
           },
         );
 
-      // Bug #10 Fixed: use case-insensitive regex and check deletedCount.
       const result = await this.movieModel.deleteOne({
         name: { $regex: `^${this.escapeRegex(input)}$`, $options: 'i' },
       });
 
       if (result.deletedCount === 0) {
-        return ctx.reply('⚠️ No movie found with that name. Nothing was deleted.', {
-          parse_mode: 'HTML',
-        });
+        return ctx.reply(
+          '⚠️ No movie found with that name. Nothing was deleted.',
+          {
+            parse_mode: 'HTML',
+          },
+        );
       }
 
       await ctx.reply('✅ Movie Deleted Successfully', { parse_mode: 'HTML' });
@@ -1463,10 +1478,6 @@ export class MovieBotService implements OnModuleInit {
     });
   }
 
-  /**
-   * Bug #8 Fixed: Pass ctx.from.id as userId so poster temp messages are
-   * linked to the requesting user (was called without userId, saving undefined).
-   */
   private async tryCopyPoster(ctx: any, doc: any) {
     if (doc.poster?.chatId && doc.poster?.messageId) {
       const posterMsg = await ctx.telegram.copyMessage(
@@ -1474,11 +1485,10 @@ export class MovieBotService implements OnModuleInit {
         doc.poster.chatId,
         doc.poster.messageId,
       );
-      // Bug #8 Fixed: added ctx.from.id as userId.
       await this.saveTempMessage(
         ctx.chat.id,
         posterMsg.message_id,
-        FILE_TTL_MS,
+        this.fileTtlMs,
         ctx.from.id,
       );
     }
@@ -1494,7 +1504,7 @@ export class MovieBotService implements OnModuleInit {
       await this.saveTempMessage(
         ctx.chat.id,
         message.message_id,
-        FILE_TTL_MS,
+        this.fileTtlMs,
         ctx.from.id,
       );
     }
@@ -1510,7 +1520,7 @@ export class MovieBotService implements OnModuleInit {
     await this.saveTempMessage(
       ctx.chat.id,
       message.message_id,
-      FILE_TTL_MS,
+      this.fileTtlMs,
       ctx.from.id,
     );
     await this.replyFilesSent(ctx, name);
@@ -1527,16 +1537,11 @@ export class MovieBotService implements OnModuleInit {
     await this.saveTempMessage(
       ctx.chat.id,
       successMsg.message_id,
-      FILE_TTL_MS,
+      this.fileTtlMs,
       ctx.from.id,
     );
   }
 
-  /**
-   * Bug #16 Fixed: searchName is now URL-encoded before being interpolated
-   * into the Google search URL. Previously, spaces and special characters
-   * in the movie name would produce a broken URL in the inline button.
-   */
   private async replyNotFound(ctx: any, searchName: string) {
     return await ctx.reply(
       `<i>Hello ${ctx.from.first_name}</i>\n\n` +
@@ -1556,15 +1561,13 @@ export class MovieBotService implements OnModuleInit {
             [
               {
                 text: 'Check Spelling in Google',
-                // Bug #16 Fixed: encodeURIComponent ensures special chars and spaces
-                // in the movie name produce a valid URL.
                 url: `https://www.google.com/search?q=${encodeURIComponent(searchName)}`,
               },
             ],
             [
               {
                 text: 'Request Movie in Group',
-                url: 'https://t.me/+JH-KR5ZMJUQyNzI1',
+                url: this.supportGroupUrl,
               },
             ],
           ],
@@ -1592,7 +1595,7 @@ export class MovieBotService implements OnModuleInit {
       await this.saveTempMessage(
         ctx.chat.id,
         msg.message_id,
-        FILE_TTL_MS,
+        this.fileTtlMs,
         ctx.from.id,
       );
     }
@@ -1608,7 +1611,6 @@ export class MovieBotService implements OnModuleInit {
     const nav: any[] = [];
     if (page > 0)
       nav.push({ text: '⬅️ Prev', callback_data: `${prefix}_${page - 1}` });
-    // Bug #15 Fixed: Unified page label to "Page X/Y" (was "Pages X/Y").
     nav.push({
       text: `Page ${page + 1}/${totalPages}`,
       callback_data: 'noop',
@@ -1622,13 +1624,14 @@ export class MovieBotService implements OnModuleInit {
   //  Fuzzy-search helpers
   // ════════════════════════════════════════════
 
-  findTopMatches(input: string, docs: any[], minScore = FUZZY_MIN_SCORE) {
+  findTopMatches(input: string, docs: any[], minScore?: number) {
+    const threshold = minScore ?? this.fuzzyMinScore;
     return docs
       .map((doc) => ({
         doc,
         score: ratio(input.toLowerCase(), doc.name.toLowerCase()),
       }))
-      .filter((r) => r.score >= minScore)
+      .filter((r) => r.score >= threshold)
       .sort((a, b) => b.score - a.score);
   }
 

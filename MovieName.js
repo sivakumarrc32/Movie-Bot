@@ -4,26 +4,28 @@ import { Telegraf } from 'telegraf';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Bug #1 Fixed: Removed hardcoded bot token. Now reads from environment variable.
+// Reads bot token, channel ID, and bot username from environment variables.
 const BOT_TOKEN = process.env.MOVIE_BOT_TOKEN;
 if (!BOT_TOKEN) {
-  console.error('❌ MOVIE_NAME_BOT_TOKEN is not set in environment variables.');
+  console.error('❌ MOVIE_BOT_TOKEN is not set in environment variables.');
   process.exit(1);
 }
 
-const CHANNEL_ID = process.env.MOVIE_CHANNEL_ID;
+const CHANNEL_ID =
+  process.env.MOVIE_LIST_CHANNEL_ID || process.env.MOVIE_CHANNEL_ID;
 if (!CHANNEL_ID) {
-  console.error('❌ MOVIE_NAME_CHANNEL_ID is not set in environment variables.');
+  console.error('❌ MOVIE_LIST_CHANNEL_ID is not set in environment variables.');
   process.exit(1);
 }
 
-// Bug #12 Fixed: Bot username now read from environment variable instead of being hardcoded
-// to a stale/wrong bot username (was 'lord_fourth_movie5_bot').
 const BOT_USERNAME = process.env.MOVIE_BOT_USERNAME;
 if (!BOT_USERNAME) {
   console.error('❌ MOVIE_BOT_USERNAME is not set in environment variables.');
   process.exit(1);
 }
+
+const CHUNK_SIZE = Number(process.env.MOVIE_NAME_SYNC_CHUNK_SIZE) || 35;
+const DELAY_MS = Number(process.env.MOVIE_NAME_SYNC_DELAY_MS) || 1000;
 
 const bot = new Telegraf(BOT_TOKEN);
 
@@ -72,7 +74,7 @@ async function exportMovieNamesToTelegram() {
       return `<b>${i + 1}. ${safeName} → <a href="https://t.me/${BOT_USERNAME}?start=${encoded}">Click Here</a></b>`;
     });
 
-    const chunkSize = 35;
+    const chunkSize = CHUNK_SIZE;
     const messages = [];
     for (let i = 0; i < movieTexts.length; i += chunkSize) {
       const chunk = movieTexts.slice(i, i + chunkSize);
@@ -125,7 +127,7 @@ async function exportMovieNamesToTelegram() {
         }
       }
 
-      await new Promise((r) => setTimeout(r, 1000)); // avoid flood
+      await new Promise((r) => setTimeout(r, DELAY_MS)); // avoid flood
     }
 
     // 🗑️ If extra old messages exist, delete them

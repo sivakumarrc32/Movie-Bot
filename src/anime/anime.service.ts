@@ -22,8 +22,6 @@ type ChannelInfo = {
 @Injectable()
 export class AnimeService implements OnModuleInit {
   public bot: Telegraf;
-  public ownerId: number;
-  private PAGE_SIZE = 10;
 
   constructor(
     @InjectModel(Anime.name) private animeModel: Model<Anime>,
@@ -32,7 +30,128 @@ export class AnimeService implements OnModuleInit {
     private configService: ConfigService,
   ) {
     this.bot = new Telegraf(this.configService.get('ANIME_BOT_TOKEN')!);
-    this.ownerId = 992923409;
+  }
+
+  // ─────────────────────────────────────────────
+  //  Dynamic Configuration Getters
+  // ─────────────────────────────────────────────
+
+  public get ownerId(): number {
+    return (
+      Number(this.configService.get('BOT_OWNER_TELEGRAM_ID')) || 992923409
+    );
+  }
+
+  public get channels(): ChannelInfo[] {
+    try {
+      const raw = this.configService.get<string>(
+        'ANIME_BOT_FORCE_SUB_CHANNELS',
+      );
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      console.error(
+        'Failed to parse ANIME_BOT_FORCE_SUB_CHANNELS from .env:',
+        e,
+      );
+    }
+    return [
+      {
+        id: '-1003678273771',
+        text: '📢 Join Channel 1',
+        url: 'https://t.me/+ZsEU6M0ISTBmZTNl',
+      },
+      {
+        id: '-1003326848627',
+        text: '📢 Join Channel 2',
+        url: 'https://t.me/+Ekzqobyp6GY4OGE9',
+      },
+      {
+        id: '-1003579412645',
+        text: '📢 Join Channel 3',
+        url: 'https://t.me/+YfFvZ_QPOqBiYzE1',
+      },
+      {
+        id: '-1003624602414',
+        text: 'Main Channel',
+        url: 'https://t.me/LFT_Movie',
+      },
+    ];
+  }
+
+  public get pageSize(): number {
+    return Number(this.configService.get('FILES_PER_PAGE')) || 10;
+  }
+
+  public get listPageSize(): number {
+    return Number(this.configService.get('MOVIES_PER_LIST_PAGE')) || 15;
+  }
+
+  public get fileTtlMs(): number {
+    return (
+      Number(this.configService.get('AUTO_DELETE_FILE_MESSAGE_TIMEOUT_MS')) ||
+      5 * 60 * 1000
+    );
+  }
+
+  public get defaultTtlMs(): number {
+    return (
+      Number(
+        this.configService.get('AUTO_DELETE_NORMAL_MESSAGE_TIMEOUT_MS'),
+      ) || 2 * 60 * 1000
+    );
+  }
+
+  public get fuzzyMinScore(): number {
+    return Number(this.configService.get('FUZZY_SEARCH_MIN_SCORE')) || 90;
+  }
+
+  public get startGifId(): string {
+    return (
+      this.configService.get<string>('ANIME_BOT_START_GIF_ID') ||
+      'CgACAgUAAxkBAAIM6WlhV0ySZvJz7GhO7DNz1IdU6hqgAAIbHQACT_8RV-xe9oQ-2OHMOAQ'
+    );
+  }
+
+  public get loadingStickerId(): string {
+    return (
+      this.configService.get<string>('ANIME_BOT_LOADING_STICKER_ID') ||
+      'CAACAgUAAxkBAAIBpmje0EtKLDDHmnxLwL1Y8l7HtN0LAAJ9GQACSsz4Vv2odmJpcRPVNgQ'
+    );
+  }
+
+  public get supportGroupUrl(): string {
+    return (
+      this.configService.get<string>('SUPPORT_GROUP_URL') ||
+      'https://t.me/+JH-KR5ZMJUQyNzI1'
+    );
+  }
+
+  public get developerUrl(): string {
+    return (
+      this.configService.get<string>('DEVELOPER_TELEGRAM_URL') ||
+      'https://t.me/Lord_Fourth04'
+    );
+  }
+
+  public get promoChannelUrl(): string {
+    return (
+      this.configService.get<string>('PROMO_CHANNEL_URL') ||
+      'https://t.me/LordFourthMovieTamil'
+    );
+  }
+
+  public get movieBotUsername(): string {
+    return (
+      this.configService.get<string>('MOVIE_BOT_USERNAME') ||
+      'lord_fourth_movie6_bot'
+    );
+  }
+
+  public get animeBotUsername(): string {
+    return (
+      this.configService.get<string>('ANIME_BOT_USERNAME') ||
+      'lord_fourth_anime_bot'
+    );
   }
 
   // ════════════════════════════════════════════
@@ -42,7 +161,7 @@ export class AnimeService implements OnModuleInit {
   private checkOwner(ctx: any): boolean {
     if (ctx.from.id !== this.ownerId) {
       ctx.reply(
-        '<b>🚫 You are not authorized to use this bot.</b> \n\n\n @lord_fourth_anime_bot Here You Can Get the Animes',
+        `<b>🚫 You are not authorized to use this bot.</b> \n\n\n @${this.animeBotUsername} Here You Can Get the Animes`,
         { parse_mode: 'HTML' },
       );
       return false;
@@ -50,21 +169,15 @@ export class AnimeService implements OnModuleInit {
     return true;
   }
 
-  private channels: ChannelInfo[] = [
-    { id: '-1003678273771', text: '📢 Join Channel 1', url: 'https://t.me/+ZsEU6M0ISTBmZTNl' },
-    { id: '-1003326848627', text: '📢 Join Channel 2', url: 'https://t.me/+Ekzqobyp6GY4OGE9' },
-    { id: '-1003579412645', text: '📢 Join Channel 3', url: 'https://t.me/+YfFvZ_QPOqBiYzE1' },
-    { id: '-1003624602414', text: 'Main Channel',      url: 'https://t.me/LFT_Movie' },
-  ];
-
   private async checkSubscription(ctx: any): Promise<boolean> {
     try {
       const notJoinedChannels: ChannelInfo[] = [];
 
       for (const channel of this.channels) {
-        const member = await ctx.telegram.getChatMember(channel.id, ctx.from.id);
-        // Bug #6 Fixed: also check 'kicked' status so banned users cannot bypass
-        // the subscription gate (previously only 'left' was checked).
+        const member = await ctx.telegram.getChatMember(
+          channel.id,
+          ctx.from.id,
+        );
         if (member.status === 'left' || member.status === 'kicked') {
           notJoinedChannels.push(channel);
         }
@@ -76,26 +189,26 @@ export class AnimeService implements OnModuleInit {
         .filter((ch) => ch.text !== 'Main Channel')
         .map((ch) => ({ text: ch.text, url: ch.url }));
 
-      const mainChannel = notJoinedChannels.find((ch) => ch.text === 'Main Channel');
+      const mainChannel = notJoinedChannels.find(
+        (ch) => ch.text === 'Main Channel',
+      );
 
       const keyboard: any[] = [];
       if (channel1And2.length > 0) keyboard.push(channel1And2);
-      if (mainChannel) keyboard.push([{ text: mainChannel.text, url: mainChannel.url }]);
+      if (mainChannel)
+        keyboard.push([{ text: mainChannel.text, url: mainChannel.url }]);
       keyboard.push([{ text: '🔄 Try Again', callback_data: 'check_join' }]);
 
-      await ctx.replyWithAnimation(
-        'CgACAgUAAxkBAAIM6WlhV0ySZvJz7GhO7DNz1IdU6hqgAAIbHQACT_8RV-xe9oQ-2OHMOAQ',
-        {
-          caption:
-            `Hi ${ctx.from.first_name},\n\n` +
-            `<b>Intha channel la join pannunga</b>\n\n` +
-            `Movies direct-ah channel-la post pannuvom.\n` +
-            `Updates miss pannaama irukka join pannunga.\n\n` +
-            `👇 Keela irukkura button click pannunga`,
-          parse_mode: 'HTML',
-          reply_markup: { inline_keyboard: keyboard },
-        },
-      );
+      await ctx.replyWithAnimation(this.startGifId, {
+        caption:
+          `Hi ${ctx.from.first_name},\n\n` +
+          `<b>Intha channel la join pannunga</b>\n\n` +
+          `Movies direct-ah channel-la post pannuvom.\n` +
+          `Updates miss pannaama irukka join pannunga.\n\n` +
+          `👇 Keela irukkura button click pannunga`,
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: keyboard },
+      });
       return false;
     } catch (err) {
       console.error('checkSubscription error:', err.message);
@@ -149,13 +262,6 @@ export class AnimeService implements OnModuleInit {
   //  /start
   // ════════════════════════════════════════════
 
-  /**
-   * Bug #13 Fixed: Removed the double checkSubscription call.
-   * Previously, when a payload was present, checkSubscription was called inside
-   * the `if (payload)` block, and then the code could fall through and call it
-   * again in the non-payload path. Now there is a single check at the top,
-   * and both branches (with payload and without) share it.
-   */
   async start(ctx: any, payload?: string) {
     try {
       const isJoined = await this.checkSubscription(ctx);
@@ -168,7 +274,7 @@ export class AnimeService implements OnModuleInit {
 
       const userName = ctx.from.username;
       const message = await ctx.replyWithAnimation(
-        'CgACAgUAAxkBAAIBqWje1uUB4Kfp1iH2SFv8PMY12VkXAAJ-GQACSsz4Vly_XR76PxZ-NgQ',
+        this.startGifId,
         {
           caption:
             `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a>\n\n` +
@@ -181,8 +287,8 @@ export class AnimeService implements OnModuleInit {
           reply_markup: {
             inline_keyboard: [
               [
-                { text: 'Anime Bot', url: 'https://t.me/lord_fourth_anime_bot' },
-                { text: 'Movie Bot', url: 'https://t.me/lord_fourth_movie3_bot' },
+                { text: 'Anime Bot', url: `https://t.me/${this.animeBotUsername}` },
+                { text: 'Movie Bot', url: `https://t.me/${this.movieBotUsername}` },
               ],
               [
                 { text: '📃 List of Anime', callback_data: 'list' },
@@ -190,15 +296,15 @@ export class AnimeService implements OnModuleInit {
               ],
               [
                 { text: '👨‍💻 About', callback_data: 'about' },
-                { text: '⚙️ Support', url: 'https://t.me/+JH-KR5ZMJUQyNzI1' },
+                { text: '⚙️ Support', url: this.supportGroupUrl },
               ],
-              [{ text: 'Developer', url: 'https://t.me/Lord_Fourth04' }],
+              [{ text: 'Developer', url: this.developerUrl }],
             ],
           },
         },
       );
 
-      await this.saveTempMessage(ctx.chat.id, message.message_id, 5 * 60 * 1000, ctx.from.id);
+      await this.saveTempMessage(ctx.chat.id, message.message_id, this.defaultTtlMs, ctx.from.id);
 
       const user = await this.userModel.findOne({ telegramId: ctx.from.id });
       if (!user) {
@@ -222,7 +328,7 @@ export class AnimeService implements OnModuleInit {
 
   async sendAnimeList(ctx: any, page = 1, isEdit = false) {
     try {
-      const limit = 15;
+      const limit = this.listPageSize;
       const skip = (page - 1) * limit;
       const totalAnimes = await this.animeModel.countDocuments();
       const totalPages = Math.ceil(totalAnimes / limit);
@@ -238,7 +344,6 @@ export class AnimeService implements OnModuleInit {
 
       const buttons: { text: string; callback_data: string }[] = [];
       if (page > 1) buttons.push({ text: '⬅️ Back', callback_data: `list_page_${page - 1}` });
-      // Bug #15 Fixed (anime side): Unified page label to "Page X/Y".
       buttons.push({ text: `Page ${page}/${totalPages}`, callback_data: 'noop' });
       if (skip + limit < totalAnimes) buttons.push({ text: 'Next ➡️', callback_data: `list_page_${page + 1}` });
 
@@ -257,24 +362,16 @@ export class AnimeService implements OnModuleInit {
   //  Plain text → search
   // ════════════════════════════════════════════
 
-  /**
-   * Bug #9 Fixed: The loading animation message (ani) is now deleted in all
-   * code paths — including the success paths — so it never stays visible in
-   * the chat after the result is sent.
-   */
   async sendAnime(ctx: any) {
     if (ctx.message.text.startsWith('/')) return;
 
-    const ani = await ctx.replyWithAnimation(
-      'CAACAgUAAxkBAAIBpmje0EtKLDDHmnxLwL1Y8l7HtN0LAAJ9GQACSsz4Vv2odmJpcRPVNgQ',
-    );
+    const ani = await ctx.replyWithAnimation(this.loadingStickerId);
 
     try {
       const name = ctx.message.text.trim();
       const animes = await this.animeModel.find({ name: { $regex: name, $options: 'i' } });
 
       if (animes.length === 0) {
-        // Bug #9: delete loading animation before showing not-found reply.
         await ctx.deleteMessage(ani.message_id);
         const msg = await ctx.reply(
           `<i>Hello ${ctx.from.first_name}</i>\n\n<b>🚫 Requested Anime is not Available in My Database.</b>\n\n<b>Anime Name Must be in Correct Format</b>\n\n <b><u>Examples for Typing</u></b>\n 1.(Anime Name) S01 or (Anime Name) S02 \n2. (Anime Name)\n\n<b>Note :</b>\n\n<i>Please Check the Spelling or Anime Available in our bot Using <b> List of Animes</b> </i> \n\n <i>If the Anime is not in the List. Kindly Contact the Admin Using <b>Request Anime</b></i>`,
@@ -283,25 +380,24 @@ export class AnimeService implements OnModuleInit {
             reply_markup: {
               inline_keyboard: [
                 [
-                  { text: 'Request Anime', url: 'https://t.me/+JH-KR5ZMJUQyNzI1' },
+                  { text: 'Request Anime', url: this.supportGroupUrl },
                   { text: 'List of Animes', callback_data: 'list' },
                 ],
               ],
             },
           },
         );
-        await this.saveTempMessage(ctx.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
+        await this.saveTempMessage(ctx.chat.id, msg.message_id, this.fileTtlMs, ctx.from.id);
         return;
       }
 
       if (animes.length === 1) {
-        // Bug #9 Fixed: delete loading animation on single-match success path.
         await ctx.deleteMessage(ani.message_id);
         if (animes[0].poster?.chatId && animes[0].poster?.messageId) {
           const posterMsg = await ctx.telegram.copyMessage(
             ctx.chat.id, animes[0].poster.chatId, animes[0].poster.messageId,
           );
-          await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, 5 * 60 * 1000);
+          await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, this.fileTtlMs);
         }
         return this.sendEpisodePage(ctx, animes[0], 0);
       }
@@ -317,14 +413,13 @@ export class AnimeService implements OnModuleInit {
 
       console.log('BEST MATCH:', bestMatch?.name, bestScore);
 
-      if (bestMatch && bestScore >= 90) {
-        // Bug #9 Fixed: delete loading animation on fuzzy-match success path.
+      if (bestMatch && bestScore >= this.fuzzyMinScore) {
         await ctx.deleteMessage(ani.message_id);
         if (bestMatch.poster?.chatId && bestMatch.poster?.messageId) {
           const posterMsg = await ctx.telegram.copyMessage(
             ctx.chat.id, bestMatch.poster.chatId, bestMatch.poster.messageId,
           );
-          await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, 5 * 60 * 1000);
+          await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, this.fileTtlMs);
         }
         return this.sendEpisodePage(ctx, bestMatch, 0);
       }
@@ -335,10 +430,9 @@ export class AnimeService implements OnModuleInit {
       animes.forEach((m) => { list += `• <code>${m.name}</code>\n`; });
 
       const msg = await ctx.reply(`<b>Multiple Animes found</b>\n\n${list}`, { parse_mode: 'HTML' });
-      await this.saveTempMessage(msg.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
+      await this.saveTempMessage(msg.chat.id, msg.message_id, this.fileTtlMs, ctx.from.id);
     } catch (err) {
       console.error('Anime search error:', err.message);
-      // Best-effort cleanup on error
       try { await ctx.deleteMessage(ani.message_id); } catch { /* ignore */ }
     }
   }
@@ -347,15 +441,8 @@ export class AnimeService implements OnModuleInit {
   //  Deep-link entry
   // ════════════════════════════════════════════
 
-  /**
-   * Bug #3 Fixed: No longer calls this.animeModel.find() with no filter to load
-   * the entire collection into memory. Uses a regex query to narrow candidates
-   * first, then fuzzy-matches only those documents.
-   */
   async sendAnimeName(ctx: any, name?: string) {
-    const ani = await ctx.replyWithAnimation(
-      'CAACAgUAAxkBAAIBpmje0EtKLDDHmnxLwL1Y8l7HtN0LAAJ9GQACSsz4Vv2odmJpcRPVNgQ',
-    );
+    const ani = await ctx.replyWithAnimation(this.loadingStickerId);
 
     try {
       const searchText = name?.trim() ?? '';
@@ -364,7 +451,6 @@ export class AnimeService implements OnModuleInit {
         return;
       }
 
-      // Bug #3 Fixed: query with regex filter first, then fuzzy-match the subset.
       const candidates = await this.animeModel.find({
         name: { $regex: this.escapeRegex(searchText), $options: 'i' },
       });
@@ -378,14 +464,14 @@ export class AnimeService implements OnModuleInit {
             reply_markup: {
               inline_keyboard: [
                 [
-                  { text: 'Request Anime', url: 'https://t.me/+JH-KR5ZMJUQyNzI1' },
+                  { text: 'Request Anime', url: this.supportGroupUrl },
                   { text: 'List of Animes', callback_data: 'list' },
                 ],
               ],
             },
           },
         );
-        await this.saveTempMessage(ctx.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
+        await this.saveTempMessage(ctx.chat.id, msg.message_id, this.fileTtlMs, ctx.from.id);
         return;
       }
 
@@ -400,14 +486,13 @@ export class AnimeService implements OnModuleInit {
 
       console.log('BEST MATCH:', bestMatch?.name, bestScore);
 
-      if (bestMatch && bestScore >= 90) {
-        // Bug #9 Fixed (deep-link path): delete loading animation on success.
+      if (bestMatch && bestScore >= this.fuzzyMinScore) {
         await ctx.deleteMessage(ani.message_id);
         if (bestMatch.poster?.chatId && bestMatch.poster?.messageId) {
           const posterMsg = await ctx.telegram.copyMessage(
             ctx.chat.id, bestMatch.poster.chatId, bestMatch.poster.messageId,
           );
-          await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, 5 * 60 * 1000);
+          await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, this.fileTtlMs);
         }
         return this.sendEpisodePage(ctx, bestMatch, 0);
       }
@@ -421,14 +506,14 @@ export class AnimeService implements OnModuleInit {
           reply_markup: {
             inline_keyboard: [
               [
-                { text: 'Request Anime', url: 'https://t.me/+JH-KR5ZMJUQyNzI1' },
+                { text: 'Request Anime', url: this.supportGroupUrl },
                 { text: 'List of Animes', callback_data: 'list' },
               ],
             ],
           },
         },
       );
-      await this.saveTempMessage(msg.chat.id, msg.message_id, 5 * 60 * 1000);
+      await this.saveTempMessage(msg.chat.id, msg.message_id, this.fileTtlMs);
     } catch (err) {
       console.error('Anime search error:', err.message);
       try { await ctx.deleteMessage(ani.message_id); } catch { /* ignore */ }
@@ -458,34 +543,28 @@ export class AnimeService implements OnModuleInit {
         '<u> <b>Available Commands</b> </u>\n\n👉🏻 1. /list -Use this command to see all available animes.\n\n👉🏻 2. /help - To view the commands available in this bot \n\n✨ Just type the anime name to get anime instantly!\n\n <i><b>Note :</b> if you know the anime name then type the anime name corretly and get anime files</i> \n\n<i>if you don\'t know the exact moive name follow the steps below</i>\n\n<u>Follow the Steps to Get the Anime File</u>\n\n<b>Step - 1 :</b> Use /list Command to get the anime list.\n\n<b>Step - 2 :</b> If the anime Available in the list <b>Press the anime Name It Will Be Copied</b> \n\n<b>Step - 3 :</b> Paste and Send the anime You Will Get the Files \n\n<b>Step - 4 :</b> After Getting the File Forward to Your Friends or In Your Saved Message.\n\n <b> Because Files Will Be Deleted After 5 Mins. For Copyrights Issues</b> \n\n\n <i><b>Thanks For Using Our Bot....❤️</b></i>',
         { parse_mode: 'HTML' },
       );
-      await this.saveTempMessage(ctx.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
+      await this.saveTempMessage(ctx.chat.id, msg.message_id, this.defaultTtlMs, ctx.from.id);
     } catch (err) {
       console.error('Help command error:', err.message);
     }
   }
 
   async about(ctx: any) {
-    // Bug #14 Fixed: answerCbQuery is now inside the try/catch block so that
-    // if the callback query has expired (Telegraf throws), the error is caught
-    // and logged rather than being an unhandled rejection.
     try {
       await ctx.answerCbQuery();
       const msg = await ctx.editMessageCaption(
-        `<b>🤖 My Name </b>: <a href="https://t.me/lord_fourth_anime_bot">Anime Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="https://t.me/LordFourthMovieTamil">Lord Fourth Movie Tamil</a>`,
+        `<b>🤖 My Name </b>: <a href="https://t.me/${this.animeBotUsername}">Anime Bot</a> ⚡️\n<b>📝 Language </b>: <a href="https://nestjs.com/">Nest JS</a>\n<b>🚀 Server </b>: <a href="https://vercel.com/">Vercel</a> \n<b>📢 Channel </b>: <a href="${this.promoChannelUrl}">Lord Fourth Movie Tamil</a>`,
         {
           parse_mode: 'HTML',
           reply_markup: { inline_keyboard: [[{ text: '⬅️ Back', callback_data: 'backToStart' }]] },
         },
       );
-      await this.saveTempMessage(ctx.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
+      await this.saveTempMessage(ctx.chat.id, msg.message_id, this.defaultTtlMs, ctx.from.id);
     } catch (err) {
       console.error('About command error:', err.message);
     }
   }
 
-  /**
-   * Bug #14 Fixed (backToStart): answerCbQuery is now inside try/catch.
-   */
   async backToStart(ctx: any) {
     try {
       await ctx.answerCbQuery();
@@ -501,9 +580,9 @@ export class AnimeService implements OnModuleInit {
               ],
               [
                 { text: '👨‍💻 About Bot', callback_data: 'about' },
-                { text: '⚙️ Support', url: 'https://t.me/+JH-KR5ZMJUQyNzI1' },
+                { text: '⚙️ Support', url: this.supportGroupUrl },
               ],
-              [{ text: 'Developer', url: 'https://t.me/Lord_Fourth04' }],
+              [{ text: 'Developer', url: this.developerUrl }],
             ],
           },
         },
@@ -573,14 +652,14 @@ export class AnimeService implements OnModuleInit {
 
         for (const file of anime.files) {
           const message = await ctx.telegram.copyMessage(ctx.chat.id, file.chatId, file.messageId);
-          await this.saveTempMessage(ctx.chat.id, message.message_id, 5 * 60 * 1000, ctx.from.id);
+          await this.saveTempMessage(ctx.chat.id, message.message_id, this.fileTtlMs, ctx.from.id);
         }
 
         const successMsg = await ctx.reply(
           `✅ <b>Anime "${anime.name}" sent successfully!</b>\n\n 🙇🏻<b>"Episode orders are not proper, please check Sorry for the inconvenience "</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
           { parse_mode: 'HTML' },
         );
-        await this.saveTempMessage(ctx.chat.id, successMsg.message_id, 5 * 60 * 1000, ctx.from.id);
+        await this.saveTempMessage(ctx.chat.id, successMsg.message_id, this.fileTtlMs, ctx.from.id);
         return;
       }
 
@@ -595,13 +674,13 @@ export class AnimeService implements OnModuleInit {
         if (!file) return ctx.reply('❌ Episode not found.');
 
         const msg = await ctx.telegram.copyMessage(ctx.chat.id, file.chatId, file.messageId);
-        await this.saveTempMessage(ctx.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
+        await this.saveTempMessage(ctx.chat.id, msg.message_id, this.fileTtlMs, ctx.from.id);
 
         const successMsg = await ctx.reply(
           `✅ <b>Anime "${anime.name}" sent successfully!</b>\n\n 🙇🏻<b>"Episode orders are not proper, please check Sorry for the inconvenience "</b>\n\n🍿 Enjoy watching. \n\n <b>⏳ Files Will be Deleted After 5 Mins</b> \n\n\n <b>Please Forward to Anywhere or in Saved Message </b>`,
           { parse_mode: 'HTML' },
         );
-        await this.saveTempMessage(ctx.chat.id, successMsg.message_id, 5 * 60 * 1000, ctx.from.id);
+        await this.saveTempMessage(ctx.chat.id, successMsg.message_id, this.fileTtlMs, ctx.from.id);
         return;
       }
     } catch (err) {
@@ -614,11 +693,11 @@ export class AnimeService implements OnModuleInit {
   // ════════════════════════════════════════════
 
   private async sendEpisodePage(ctx: any, anime: any, page: number) {
-    const start = page * this.PAGE_SIZE;
-    const end = start + this.PAGE_SIZE;
+    const start = page * this.pageSize;
+    const end = start + this.pageSize;
     const reversedFiles = [...anime.files].reverse();
     const files = reversedFiles.slice(start, end);
-    const totalPages = Math.ceil(anime.files.length / this.PAGE_SIZE);
+    const totalPages = Math.ceil(anime.files.length / this.pageSize);
 
     const buttons: any[] = [];
 
@@ -640,8 +719,7 @@ export class AnimeService implements OnModuleInit {
 
     const navButtons: any[] = [];
     if (page > 0) navButtons.push({ text: '⬅️ Prev', callback_data: `page_${anime._id}_${page - 1}` });
-    // Bug #15 Fixed (anime side): Unified page label to "Page X/Y".
-    navButtons.push({ text: `Page ${page + 1}/${totalPages}`, callback_data: 'noop' });
+    buttons.push({ text: `Page ${page + 1}/${totalPages}`, callback_data: 'noop' });
     if (end < anime.files.length) {
       console.log('end < anime.files.length', end, anime.files.length);
       navButtons.push({ text: 'Next ➡️', callback_data: `page_${anime._id}_${page + 1}` });
@@ -658,7 +736,7 @@ export class AnimeService implements OnModuleInit {
         parse_mode: 'HTML',
         reply_markup: { inline_keyboard: buttons },
       });
-      await this.saveTempMessage(ctx.chat.id, msg.message_id, 5 * 60 * 1000, ctx.from.id);
+      await this.saveTempMessage(ctx.chat.id, msg.message_id, this.fileTtlMs, ctx.from.id);
     }
   }
 
