@@ -854,7 +854,7 @@ export class MovieBotService implements OnModuleInit {
     for (let i = 0; i < pageItems.length; i++) {
       const item = pageItems[i];
       const globalIdx = start + i + 1;
-      const year: number | null = (item.doc as any).year ?? null;
+      const year: number | null = (item.doc).year ?? null;
       const audio = this.extractAudio(item.doc) || 'Unknown';
       const qual = this.extractQuality(item.doc) || 'Unknown';
 
@@ -1538,7 +1538,7 @@ export class MovieBotService implements OnModuleInit {
    * in the movie name would produce a broken URL in the inline button.
    */
   private async replyNotFound(ctx: any, searchName: string) {
-    return ctx.reply(
+    return await ctx.reply(
       `<i>Hello ${ctx.from.first_name}</i>\n\n` +
         `<b>🚫 Requested Movie is not Available in My Database.</b>\n\n` +
         `<b>Movie Name Must be in Correct Format</b>\n\n` +
