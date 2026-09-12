@@ -18,6 +18,7 @@ import { TempMessage } from './temp.schema';
 import { Anime } from 'src/anime/anime.schema';
 import { RequestMovies } from './requestMovies.schema';
 import { Setting } from './settings.schema';
+import { SettingsService } from '../settings/settings.service';
 
 // ─────────────────────────────────────────────
 //  Types
@@ -72,127 +73,66 @@ export class MovieBotService implements OnModuleInit {
     @InjectModel(RequestMovies.name) private requestModel: Model<RequestMovies>,
     @InjectModel(Setting.name) private settingModel: Model<Setting>,
     private configService: ConfigService,
+    private settingsService: SettingsService,
   ) {
     this.bot = new Telegraf(this.configService.get('MOVIE_BOT_TOKEN')!);
-    this.ownerId =
-      Number(this.configService.get('BOT_OWNER_TELEGRAM_ID')) || 992923409;
+    this.ownerId = this.settingsService.ownerId;
   }
 
   // ─────────────────────────────────────────────
-  //  Dynamic Configuration Getters
+  //  Live Configuration Getters (from SettingsService)
   // ─────────────────────────────────────────────
 
   public get requiredChannels(): ChannelInfo[] {
-    try {
-      const raw = this.configService.get<string>(
-        'MOVIE_BOT_FORCE_SUB_CHANNELS',
-      );
-      if (raw) return JSON.parse(raw);
-    } catch (e) {
-      console.error(
-        'Failed to parse MOVIE_BOT_FORCE_SUB_CHANNELS from .env:',
-        e,
-      );
-    }
-    return [
-      {
-        id: '-1003261050452',
-        text: '📢 Join Channel 1',
-        url: 'https://t.me/LFT_Movie',
-      },
-      {
-        id: '-1003326848627',
-        text: '📢 Join Channel 2',
-        url: 'https://t.me/+Ekzqobyp6GY4OGE9',
-      },
-      {
-        id: '-1003847082548',
-        text: '📢 Join Channel 3',
-        url: 'https://t.me/+5It5cJtwFgU4NTM1',
-      },
-      {
-        id: '-1003579412645',
-        text: 'Main Channel',
-        url: 'https://t.me/+eowduZXbyy40NmZl',
-      },
-    ];
+    return this.settingsService.movieForceSubChannels;
   }
 
   public get pageSize(): number {
-    return Number(this.configService.get('FILES_PER_PAGE')) || 10;
+    return this.settingsService.filesPerPage;
   }
 
   public get listPageSize(): number {
-    return Number(this.configService.get('MOVIES_PER_LIST_PAGE')) || 15;
+    return this.settingsService.listPageSize;
   }
 
   public get pickerPageSize(): number {
-    return (
-      Number(this.configService.get('SEARCH_RESULTS_PER_PICKER_PAGE')) || 5
-    );
+    return this.settingsService.pickerPageSize;
   }
 
   public get defaultTtlMs(): number {
-    return (
-      Number(
-        this.configService.get('AUTO_DELETE_NORMAL_MESSAGE_TIMEOUT_MS'),
-      ) || 2 * 60 * 1000
-    );
+    return this.settingsService.defaultTtlMs;
   }
 
   public get fileTtlMs(): number {
-    return (
-      Number(this.configService.get('AUTO_DELETE_FILE_MESSAGE_TIMEOUT_MS')) ||
-      5 * 60 * 1000
-    );
+    return this.settingsService.fileTtlMs;
   }
 
   public get fuzzyMinScore(): number {
-    return Number(this.configService.get('FUZZY_SEARCH_MIN_SCORE')) || 90;
+    return this.settingsService.fuzzyMinScore;
   }
 
   public get startGifId(): string {
-    return (
-      this.configService.get<string>('MOVIE_BOT_START_GIF_ID') ||
-      'CgACAgUAAxkBAAMDaZOD5ZrjO1oq0Vf35zc94pMr85cAAl0aAAIat6FUhnSrPBydTqM6BA'
-    );
+    return this.settingsService.movieStartGifId;
   }
 
   public get supportGroupUrl(): string {
-    return (
-      this.configService.get<string>('SUPPORT_GROUP_URL') ||
-      'https://t.me/+JH-KR5ZMJUQyNzI1'
-    );
+    return this.settingsService.supportGroupUrl;
   }
 
   public get developerUrl(): string {
-    return (
-      this.configService.get<string>('DEVELOPER_TELEGRAM_URL') ||
-      'https://t.me/Lord_Fourth04'
-    );
+    return this.settingsService.developerUrl;
   }
 
   public get promoChannelUrl(): string {
-    return (
-      this.configService.get<string>('PROMO_CHANNEL_URL') ||
-      'https://t.me/LordFourthMovieTamil'
-    );
+    return this.settingsService.promoChannelUrl;
   }
 
   public get movieBotUsername(): string {
-    return (
-      this.boturl ||
-      this.configService.get<string>('MOVIE_BOT_USERNAME') ||
-      'lord_fourth_movie6_bot'
-    );
+    return this.settingsService.movieBotUsername;
   }
 
   public get animeBotUsername(): string {
-    return (
-      this.animeboturl ||
-      this.configService.get<string>('ANIME_BOT_USERNAME') ||
-      'lord_fourth_anime_bot'
-    );
+    return this.settingsService.animeBotUsername;
   }
 
   // ════════════════════════════════════════════
@@ -202,6 +142,22 @@ export class MovieBotService implements OnModuleInit {
   async onModuleInit() {
     await this.loadBotUrls();
     this.registerHandlers();
+
+    const isPolling = this.configService.get('BOT_MODE') === 'polling';
+    if (isPolling) {
+      try {
+        await this.bot.telegram.deleteWebhook({ drop_pending_updates: true });
+        this.bot.launch(() => {
+          console.log('🚀 [Dev Mode] Movie Bot started in Long Polling mode');
+        });
+        process.once('SIGINT', () => this.bot.stop('SIGINT'));
+        process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
+      } catch (err: any) {
+        console.error('Failed to launch Movie Bot polling:', err.message);
+      }
+    } else {
+      console.log('🌐 [Prod Mode] Movie Bot Webhook mode active');
+    }
   }
 
   /** Load bot URL settings from the database (or create defaults) */
@@ -248,8 +204,11 @@ export class MovieBotService implements OnModuleInit {
     this.bot.command('sm', (ctx) => this.searchMovie(ctx));
     this.bot.command('dm', (ctx) => this.deleteMovieInDB(ctx));
     this.bot.command('broadcast', (ctx) => this.broadcast(ctx));
+    this.bot.command('settings', (ctx) => this.settingsService.renderMainDashboard(ctx));
+    this.bot.command('cancel', (ctx) => this.settingsService.handleAdminInput(ctx));
 
     // ── Inline-keyboard actions ───────────────
+    this.bot.action(/^sett_/, (ctx) => this.settingsService.handleCallbackQuery(ctx));
     this.bot.action(/^list_page_(\d+)$/, (ctx) => {
       const page = parseInt(ctx.match[1]);
       return this.sendMovieList(ctx, page, true);
@@ -286,15 +245,22 @@ export class MovieBotService implements OnModuleInit {
     });
 
     // Movie & Anime episode selectors
-    this.bot.action(/^(all|file|page)_/, (ctx) =>
+    this.bot.action(/^(all|file|page|qfilter|tab)_/, (ctx) =>
       this.handleEpisodeSelection(ctx),
     );
-    this.bot.action(/^(anime_all|anime_file|anime_page)_/, (ctx) =>
-      this.handleAnimeEpisodeSelection(ctx),
+    this.bot.action(
+      /^(anime_all|anime_file|anime_page|anime_qfilter|anime_tab)_/,
+      (ctx) => this.handleAnimeEpisodeSelection(ctx),
     );
+
+    // Admin Delete Movie Action
+    this.bot.action(/^dm_/, (ctx) => this.handleDeleteMovieCallback(ctx));
 
     // ── Plain text → search ───────────────────
     this.bot.on('text', (ctx) => this.sendMovie(ctx));
+    this.bot.on(['photo', 'animation', 'document', 'sticker'], (ctx) =>
+      this.settingsService.handleAdminInput(ctx),
+    );
   }
 
   // ════════════════════════════════════════════
@@ -303,7 +269,7 @@ export class MovieBotService implements OnModuleInit {
 
   /** Returns true only if the sender is the bot owner */
   private checkOwner(ctx: any): boolean {
-    if (ctx.from.id !== this.ownerId) {
+    if (!this.settingsService.isOwner(ctx.from?.id)) {
       ctx.reply(
         `<b>🚫 You are not authorized to use this bot.</b>\n\n\n @${this.movieBotUsername} Here You Can Get the Movies`,
         { parse_mode: 'HTML' },
@@ -323,11 +289,18 @@ export class MovieBotService implements OnModuleInit {
       const notJoined: ChannelInfo[] = [];
 
       for (const channel of this.requiredChannels) {
-        const member = await ctx.telegram.getChatMember(
-          channel.id,
-          ctx.from.id,
-        );
-        if (member.status === 'left' || member.status === 'kicked') {
+        try {
+          const member = await ctx.telegram.getChatMember(
+            channel.id,
+            ctx.from.id,
+          );
+          if (member.status === 'left' || member.status === 'kicked') {
+            notJoined.push(channel);
+          }
+        } catch (err: any) {
+          console.error(
+            `⚠️ [MovieBot checkSubscription] Error for channel "${channel.text}" (ID: ${channel.id}): ${err.message}. Ensure your test bot is added as an ADMIN to this channel!`,
+          );
           notJoined.push(channel);
         }
       }
@@ -345,18 +318,32 @@ export class MovieBotService implements OnModuleInit {
       }
       keyboard.push([{ text: '🔄 Try Again', callback_data: 'check_join' }]);
 
-      await ctx.replyWithAnimation(
-        this.startGifId,
-        {
-          caption:
-            `Hi ${ctx.from.first_name},\n\n` +
-            `<b>Innum sila channel la join pannanum</b>\n\n` +
-            `Movies & updates miss aagama irukka\n` +
-            `👇 keela irukkura channel la join pannunga`,
+      const subCaption =
+        `Hi ${ctx.from.first_name},\n\n` +
+        `<b>Innum sila channel la join pannanum</b>\n\n` +
+        `Movies & updates miss aagama irukka\n` +
+        `👇 keela irukkura channel la join pannunga`;
+
+      let sentSubMsg = false;
+      if (this.startGifId) {
+        try {
+          await ctx.replyWithAnimation(this.startGifId, {
+            caption: subCaption,
+            parse_mode: 'HTML',
+            reply_markup: { inline_keyboard: keyboard },
+          });
+          sentSubMsg = true;
+        } catch (animErr: any) {
+          console.warn('Could not send startGif in checkSubscription, falling back to text:', animErr.message);
+        }
+      }
+
+      if (!sentSubMsg) {
+        await ctx.reply(subCaption, {
           parse_mode: 'HTML',
           reply_markup: { inline_keyboard: keyboard },
-        },
-      );
+        });
+      }
       return false;
     } catch (err) {
       console.error('checkSubscription error:', err.message);
@@ -380,42 +367,58 @@ export class MovieBotService implements OnModuleInit {
       }
 
       const userName = ctx.from.username;
-      const msg = await ctx.replyWithAnimation(
-        this.startGifId,
-        {
-          caption:
-            `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a>\n\n` +
-            `<i>I'm your friendly Movie Bot 🤖</i>\n\n` +
-            `<b>Here, you can get movie files directly</b> — no link shorteners, no ads, just pure movies! 🍿\n\n` +
-            `👉 <b>Send the correct movie name</b>, and if it's available in my database, you'll get the <b>file instantly!</b>\n\n` +
-            `⚡<i>Enjoy your movie time! 🎥💫</i>`,
+      const startCaption =
+        `👋 Hi <a href="https://t.me/${userName}">${ctx.from.first_name}</a>\n\n` +
+        `<i>I'm your friendly Movie Bot 🤖</i>\n\n` +
+        `<b>Here, you can get movie files directly</b> — no link shorteners, no ads, just pure movies! 🍿\n\n` +
+        `👉 <b>Send the correct movie name</b>, and if it's available in my database, you'll get the <b>file instantly!</b>\n\n` +
+        `⚡<i>Enjoy your movie time! 🎥💫</i>`;
+
+      const startMarkup = {
+        inline_keyboard: [
+          [
+            {
+              text: 'Movie Bot',
+              url: `https://t.me/${this.movieBotUsername}`,
+            },
+            {
+              text: 'Anime Bot',
+              url: `https://t.me/${this.animeBotUsername}`,
+            },
+          ],
+          [
+            { text: '📃 List of Movies', callback_data: 'list' },
+            { text: 'ℹ️ Help', callback_data: 'help' },
+          ],
+          [
+            { text: '👨‍💻 About Bot', callback_data: 'about' },
+            { text: '⚙️ Support', url: this.supportGroupUrl },
+          ],
+          [{ text: 'Developer', url: this.developerUrl }],
+        ],
+      };
+
+      let msg: any;
+      if (this.startGifId) {
+        try {
+          msg = await ctx.replyWithAnimation(this.startGifId, {
+            caption: startCaption,
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
+            reply_markup: startMarkup,
+          });
+        } catch (animErr: any) {
+          console.warn('Could not send startGif, falling back to text:', animErr.message);
+        }
+      }
+
+      if (!msg) {
+        msg = await ctx.reply(startCaption, {
           parse_mode: 'HTML',
           disable_web_page_preview: true,
-          reply_markup: {
-            inline_keyboard: [
-              [
-                {
-                  text: 'Movie Bot',
-                  url: `https://t.me/${this.movieBotUsername}`,
-                },
-                {
-                  text: 'Anime Bot',
-                  url: `https://t.me/${this.animeBotUsername}`,
-                },
-              ],
-              [
-                { text: '📃 List of Movies', callback_data: 'list' },
-                { text: 'ℹ️ Help', callback_data: 'help' },
-              ],
-              [
-                { text: '👨‍💻 About Bot', callback_data: 'about' },
-                { text: '⚙️ Support', url: this.supportGroupUrl },
-              ],
-              [{ text: 'Developer', url: this.developerUrl }],
-            ],
-          },
-        },
-      );
+          reply_markup: startMarkup,
+        });
+      }
 
       await this.saveTempMessage(
         ctx.chat.id,
@@ -532,102 +535,61 @@ export class MovieBotService implements OnModuleInit {
    *    result), or a "not found" message.
    */
   async sendMovie(ctx: any) {
-    if (ctx.message.text.startsWith('/')) return;
+    if (ctx.message?.text?.startsWith('/')) {
+      if (ctx.message.text === '/cancel') {
+        const handled = await this.settingsService.handleAdminInput(ctx);
+        if (handled) return;
+      }
+      return;
+    }
 
-    console.log(
-      `Movie Request by ${ctx.from.first_name} ${ctx.from.last_name} ${ctx.from.username} ${ctx.from.id}`,
-    );
+    // Check if admin is currently in a /settings editing session
+    const handledBySettings = await this.settingsService.handleAdminInput(ctx);
+    if (handledBySettings) return;
+
+    const isJoined = await this.checkSubscription(ctx);
+    if (!isJoined) return;
+
+    const senderName = [ctx.from.first_name, ctx.from.last_name]
+      .filter(Boolean)
+      .join(' ');
+    const username = ctx.from.username ? `@${ctx.from.username}` : '(no username)';
+    console.log(`🎬 Movie Query received from ${senderName} [${username}] (ID: ${ctx.from.id})`);
+
+    // ✅ Enable direct search in PM for Admin / Owner
+    if (this.settingsService.isOwner(ctx.from?.id)) {
+      const text = ctx.message?.text?.trim();
+      if (text) {
+        return this.sendMovieName(ctx, text);
+      }
+    }
 
     try {
-      const rawText = ctx.message.text.trim();
-      const yearMatch = rawText.match(/\b\d{4}\b/);
-      const year = yearMatch ? Number(yearMatch[0]) : null;
-      const searchName = rawText;
+      const searchGroupUrl = this.settingsService.searchGroupUrl;
+      const searchGroupText = this.settingsService.searchGroupText;
 
-      // Guard: user must not type "Season" / "season"
-      const words = searchName.split(' ');
-      if (words.includes('Season') || words.includes('season')) {
-        const warnMsg = await ctx.reply(
-          `<blockquote><b>❌ Please Don't Use Season or season</b></blockquote>\n\n` +
-            `<b>Example:</b>\nGame of Thrones S01 ✅\nGame of Thrones S02 ✅`,
-          {
-            parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: [[{ text: 'Rules', callback_data: 'help' }]],
-            },
-            reply_to_message_id: ctx.message.message_id,
+      const msg = await ctx.reply(
+        `👋 <i>Hi ${ctx.from.first_name || 'there'}</i>,\n\n` +
+          `🚫 <b>Direct Search is disabled in this Bot!</b>\n\n` +
+          `👉 <b>Movies & Series search panna keela irukkura Group-la join pannunga:</b>\n` +
+          `Group-la movie name send panna bot ungalukku direct-ah files anupidum. 🍿`,
+        {
+          parse_mode: 'HTML',
+          reply_to_message_id: ctx.message?.message_id,
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: `👥 ${searchGroupText}`, url: searchGroupUrl }],
+            ],
           },
-        );
-        await this.saveTempMessage(
-          warnMsg.chat.id,
-          warnMsg.message_id,
-          this.fileTtlMs,
-          ctx.from.id,
-        );
-        return;
-      }
-
-      // DB search (year is optional)
-      const query: any = { name: { $regex: searchName, $options: 'i' } };
-      if (year) query.year = year;
-
-      const allMovies = await this.movieModel.find(query);
-      const allAnimes = await this.animeModel.find(query);
-
-      // Fuzzy filter on top of the regex results
-      let movieMatches = this.findTopMatches(searchName, allMovies);
-      let animeMatches = this.findTopMatches(searchName, allAnimes);
-
-      // Nothing at all → save request & show "not found"
-      if (allMovies.length === 0 && allAnimes.length === 0) {
-        await this.requestModel.create({
-          name: searchName,
-          userId: ctx.from.id.toString(),
-          userName: ctx.from.first_name || ctx.from.username,
-        });
-        const msg = await this.replyNotFound(ctx, searchName);
-        await this.saveTempMessage(
-          ctx.chat.id,
-          msg.message_id,
-          this.defaultTtlMs,
-          ctx.from.id,
-        );
-        return;
-      }
-
-      // Fallback: DB hit but fuzzy came up empty → use DB results as-is
-      if (movieMatches.length === 0 && allMovies.length > 0)
-        movieMatches = allMovies.map((doc) => ({ doc, score: 0 }));
-      if (animeMatches.length === 0 && allAnimes.length > 0)
-        animeMatches = allAnimes.map((doc) => ({ doc, score: 0 }));
-
-      // ── Multiple results → paginated picker ──
-      if (movieMatches.length > 1 || animeMatches.length > 1) {
-        await ctx.react('🤔');
-        await this.sendMultipleResultsPicker(
-          ctx,
-          movieMatches,
-          animeMatches,
-          0,
-          searchName,
-        );
-        return;
-      }
-
-      // ── Single movie result ───────────────────
-      if (movieMatches.length === 1) {
-        const movie = movieMatches[0].doc;
-        await this.tryCopyPoster(ctx, movie);
-        return this.sendEpisodePage(ctx, movie, 0);
-      }
-
-      // ── Single anime result ───────────────────
-      if (animeMatches.length === 1) {
-        const anime = animeMatches[0].doc;
-        await this.tryCopyPoster(ctx, anime);
-        return this.sendAnimeEpisodePage(ctx, anime, 0);
-      }
-    } catch (err) {
+        },
+      );
+      await this.saveTempMessage(
+        ctx.chat.id,
+        msg.message_id,
+        this.defaultTtlMs,
+        ctx.from.id,
+      );
+    } catch (err: any) {
       console.error('sendMovie error:', err.message);
     }
   }
@@ -641,8 +603,304 @@ export class MovieBotService implements OnModuleInit {
    */
   async sendMovieName(ctx: any, name: string) {
     try {
+      // ── Format 0: Direct single file payload (file:<movieId>:<fileIndex> or file_<movieId>_<fileIndex>) ──
+      if (name.startsWith('file:') || name.startsWith('file_')) {
+        const separator = name.startsWith('file:') ? ':' : '_';
+        const parts = name.split(separator);
+        const movieId = parts[1];
+        const idx = parseInt(parts[2], 10);
+        let movie: any = await this.movieModel.findById(movieId);
+        if (!movie) {
+          movie = await this.animeModel.findById(movieId);
+        }
+        if (movie && movie.files && movie.files[idx]) {
+          await this.sendSingleFile(ctx, movie.files[idx], movie.name);
+          return;
+        }
+        if (movie) {
+          await this.tryCopyPoster(ctx, movie);
+          return this.sendEpisodePage(ctx, movie, 0);
+        }
+        const msg = await this.replyNotFound(ctx, movieId);
+        await this.saveTempMessage(
+          msg.chat.id,
+          msg.message_id,
+          this.defaultTtlMs,
+          ctx.from.id,
+        );
+        return;
+      }
+
+      // ── Format 0.2: Direct episode payload (epi:<movieId>:<epKey> or epi_<movieId>_<epKey>) ──
+      if (name.startsWith('epi:') || name.startsWith('epi_')) {
+        const separator = name.startsWith('epi:') ? ':' : '_';
+        const parts = name.split(separator);
+        const movieId = parts[1];
+        const epKey = parts.slice(2).join(separator);
+        let movie: any = await this.movieModel.findById(movieId);
+        if (!movie) {
+          movie = await this.animeModel.findById(movieId);
+        }
+        if (movie && movie.files && movie.files.length > 0) {
+          const normKey = normalizeEpisodeNumber(epKey);
+          const matchingFiles: { file: any; originalIndex: number }[] = [];
+          movie.files.forEach((file: any, idx: number) => {
+            const ep = file.episode || extractEpisode('', file.fileName);
+            if (normalizeEpisodeNumber(ep) === normKey) {
+              matchingFiles.push({ file, originalIndex: idx });
+            }
+          });
+
+          if (matchingFiles.length === 1) {
+            await this.sendSingleFile(ctx, matchingFiles[0].file, movie.name);
+            return;
+          } else if (matchingFiles.length > 1) {
+            matchingFiles.sort((a, b) => {
+              const resA =
+                a.file.quality || extractResolution('', a.file.fileName) || '';
+              const resB =
+                b.file.quality || extractResolution('', b.file.fileName) || '';
+              const weightA = getQualityWeight(resA);
+              const weightB = getQualityWeight(resB);
+              if (weightA > 0 && weightB > 0 && weightA !== weightB) {
+                return weightA - weightB; // Ascending: 480p -> 720p -> 1080p
+              }
+              const sizeA = parseFloat(a.file.size) || 0;
+              const sizeB = parseFloat(b.file.size) || 0;
+              return sizeA - sizeB;
+            });
+
+            await this.tryCopyPoster(ctx, movie);
+
+            const buttons: any[] = [];
+            matchingFiles.forEach(({ file, originalIndex }) => {
+              const res =
+                file.quality ||
+                extractResolution('', file.fileName) ||
+                'HD';
+              const size = file.size || '';
+              let audios: string[] = [];
+              if (Array.isArray(file.audio) && file.audio.length > 0) {
+                audios = file.audio;
+              } else if (typeof file.audio === 'string' && file.audio.trim()) {
+                audios = [file.audio.trim()];
+              } else {
+                audios = extractAudioList(file.fileName || '');
+              }
+              const audioStr =
+                audios.length > 0
+                  ? audios.join(' + ')
+                  : movie.audio && movie.audio.length > 0
+                    ? (Array.isArray(movie.audio)
+                        ? movie.audio.join(' + ')
+                        : movie.audio)
+                    : '';
+
+              const parts: string[] = [];
+              if (res) parts.push(`[${res}]`);
+              if (size) parts.push(`[${size}]`);
+              if (audioStr) parts.push(`[${audioStr}]`);
+
+              const btnText = parts.join(' - ');
+              buttons.push([
+                {
+                  text: btnText,
+                  callback_data: `file_${movie._id}_${originalIndex}`,
+                },
+              ]);
+            });
+
+            const epDisplay = formatEpisodeDisplayName(normKey);
+            const caption = `🎬 <b>${this.escapeHtml(movie.name)}</b>\n📍 <b>${epDisplay}</b> — <i>Select Quality:</i>`;
+            const msg = await ctx.reply(caption, {
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: buttons },
+            });
+            await this.saveTempMessage(
+              msg.chat.id,
+              msg.message_id,
+              this.defaultTtlMs,
+              ctx.from.id,
+            );
+            return;
+          } else {
+            await this.tryCopyPoster(ctx, movie);
+            return this.sendEpisodePage(ctx, movie, 0);
+          }
+        }
+        if (movie) {
+          await this.tryCopyPoster(ctx, movie);
+          return this.sendEpisodePage(ctx, movie, 0);
+        }
+        const msg = await this.replyNotFound(ctx, name);
+        await this.saveTempMessage(
+          msg.chat.id,
+          msg.message_id,
+          this.defaultTtlMs,
+          ctx.from.id,
+        );
+        return;
+      }
+
+      // ── Format 0.3: Direct quality payload (qual:<movieId>:<quality> or qual_<movieId>_<quality>) ──
+      if (name.startsWith('qual:') || name.startsWith('qual_')) {
+        const separator = name.startsWith('qual:') ? ':' : '_';
+        const parts = name.split(separator);
+        const movieId = parts[1];
+        const targetQual = parts.slice(2).join(separator).toLowerCase().trim();
+        let movie: any = await this.movieModel.findById(movieId);
+        if (!movie) {
+          movie = await this.animeModel.findById(movieId);
+        }
+        if (movie && movie.files && movie.files.length > 0) {
+          const matchingFiles: { file: any; originalIndex: number }[] = [];
+          movie.files.forEach((file: any, idx: number) => {
+            const res = (
+              file.quality ||
+              extractResolution('', file.fileName) ||
+              ''
+            )
+              .toLowerCase()
+              .trim();
+            if (
+              res === targetQual ||
+              res.includes(targetQual) ||
+              targetQual.includes(res)
+            ) {
+              matchingFiles.push({ file, originalIndex: idx });
+            }
+          });
+
+          if (matchingFiles.length === 1) {
+            await this.sendSingleFile(ctx, matchingFiles[0].file, movie.name);
+            return;
+          } else if (matchingFiles.length > 1) {
+            matchingFiles.sort((a, b) => {
+              const sizeA = parseFloat(a.file.size) || 0;
+              const sizeB = parseFloat(b.file.size) || 0;
+              return sizeA - sizeB;
+            });
+
+            await this.tryCopyPoster(ctx, movie);
+
+            const buttons: any[] = [];
+            matchingFiles.forEach(({ file, originalIndex }) => {
+              const res =
+                file.quality ||
+                extractResolution('', file.fileName) ||
+                'HD';
+              const size = file.size || '';
+              let audios: string[] = [];
+              if (Array.isArray(file.audio) && file.audio.length > 0) {
+                audios = file.audio;
+              } else if (typeof file.audio === 'string' && file.audio.trim()) {
+                audios = [file.audio.trim()];
+              } else {
+                audios = extractAudioList(file.fileName || '');
+              }
+              const audioStr =
+                audios.length > 0
+                  ? audios.join(' + ')
+                  : movie.audio && movie.audio.length > 0
+                    ? Array.isArray(movie.audio)
+                      ? movie.audio.join(' + ')
+                      : movie.audio
+                    : '';
+
+              const parts: string[] = [];
+              if (res) parts.push(`[${res}]`);
+              if (size) parts.push(`[${size}]`);
+              if (audioStr) parts.push(`[${audioStr}]`);
+
+              const btnText = parts.join(' - ');
+              buttons.push([
+                {
+                  text: btnText,
+                  callback_data: `file_${movie._id}_${originalIndex}`,
+                },
+              ]);
+            });
+
+            const caption = `🎬 <b>${this.escapeHtml(movie.name)}</b>\n📍 <b>${targetQual.toUpperCase()}</b> — <i>Select File:</i>`;
+            const msg = await ctx.reply(caption, {
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: buttons },
+            });
+            await this.saveTempMessage(
+              msg.chat.id,
+              msg.message_id,
+              this.defaultTtlMs,
+              ctx.from.id,
+            );
+            return;
+          } else {
+            await this.tryCopyPoster(ctx, movie);
+            return this.sendEpisodePage(ctx, movie, 0);
+          }
+        }
+        if (movie) {
+          await this.tryCopyPoster(ctx, movie);
+          return this.sendEpisodePage(ctx, movie, 0);
+        }
+        const msg = await this.replyNotFound(ctx, movieId);
+        await this.saveTempMessage(
+          msg.chat.id,
+          msg.message_id,
+          this.defaultTtlMs,
+          ctx.from.id,
+        );
+        return;
+      }
+
+      // ── Format 0.4: Direct tab payload (tab:<movieId>:<tabName>:<quality> or tab_<movieId>_<tabName>_<quality>) ──
+      if (name.startsWith('tab:') || name.startsWith('tab_')) {
+        const separator = name.startsWith('tab:') ? ':' : '_';
+        const parts = name.split(separator);
+        const movieId = parts[1];
+        const tabName = parts[2] || 'all';
+        const qual = parts[3] || 'all';
+        let movie: any = await this.movieModel.findById(movieId);
+        if (!movie) {
+          movie = await this.animeModel.findById(movieId);
+        }
+        if (movie && movie.files && movie.files.length > 0) {
+          await this.tryCopyPoster(ctx, movie);
+          return this.sendEpisodePage(ctx, movie, 0, tabName, qual);
+        }
+        const msg = await this.replyNotFound(ctx, movieId);
+        await this.saveTempMessage(
+          msg.chat.id,
+          msg.message_id,
+          this.defaultTtlMs,
+          ctx.from.id,
+        );
+        return;
+      }
+
+      // ── Format 0.5: Direct all files / Episode page payload (all:<movieId> or all_<movieId>) ──
+      if (name.startsWith('all:') || name.startsWith('all_')) {
+        const separator = name.startsWith('all:') ? ':' : '_';
+        const movieId = name.split(separator)[1];
+        let movie: any = await this.movieModel.findById(movieId);
+        if (!movie) {
+          movie = await this.animeModel.findById(movieId);
+        }
+        if (movie && movie.files && movie.files.length > 0) {
+          await this.tryCopyPoster(ctx, movie);
+          return this.sendEpisodePage(ctx, movie, 0);
+        }
+        const msg = await this.replyNotFound(ctx, movieId);
+        await this.saveTempMessage(
+          msg.chat.id,
+          msg.message_id,
+          this.defaultTtlMs,
+          ctx.from.id,
+        );
+        return;
+      }
+
       // ── Format 1: id-based payload (from picker links) ───────────────────────
-      if (name.startsWith('id:')) {
+      if (name.startsWith('id:') || name.startsWith('id_')) {
         const docId = name.slice(3).trim();
         const movie = await this.movieModel.findById(docId);
         if (movie) {
@@ -853,6 +1111,54 @@ export class MovieBotService implements OnModuleInit {
     }
   }
 
+  private async handleSendMultiplePicker(ctx: any) {
+    try {
+      await ctx.answerCbQuery();
+      const data: string = ctx.callbackQuery.data; // smpick_<page>
+      const page = parseInt(data.split('_')[1], 10);
+
+      const msgText: string = ctx.callbackQuery.message?.text || '';
+      const headerLine = msgText.split('\n').find((l) => l.startsWith('🔍'));
+      if (!headerLine) {
+        return ctx.answerCbQuery(
+          '⚠️ Could not recover original query. Please search again.',
+        );
+      }
+
+      const searchName = headerLine.replace(/^🔍\s*/, '').trim();
+      if (!searchName) {
+        return ctx.answerCbQuery(
+          '⚠️ Could not recover original query. Please search again.',
+        );
+      }
+
+      const movieCandidates = await this.movieModel.find({
+        name: { $regex: this.escapeRegex(searchName), $options: 'i' },
+      });
+      const animeCandidates = await this.animeModel.find({
+        name: { $regex: this.escapeRegex(searchName), $options: 'i' },
+      });
+
+      const movieMatches = this.findTopMatches(searchName, movieCandidates);
+      const animeMatches = this.findTopMatches(searchName, animeCandidates);
+
+      if (movieMatches.length === 0 && animeMatches.length === 0) {
+        return ctx.answerCbQuery('⚠️ Results expired, please search again.');
+      }
+
+      await this.sendMultipleResultsPicker(
+        ctx,
+        movieMatches,
+        animeMatches,
+        page,
+        searchName,
+        true,
+      );
+    } catch (err: any) {
+      console.error('handleSendMultiplePicker error:', err.message);
+    }
+  }
+
   // ════════════════════════════════════════════
   //  Picker B  –  Plain-text multiple-match
   //  Callback prefix: smpick_<page>
@@ -933,86 +1239,13 @@ export class MovieBotService implements OnModuleInit {
     if (isEdit) {
       await ctx.editMessageText(text, opts);
     } else {
-      const sent = await ctx.reply(text, {
-        ...opts,
-        reply_to_message_id: ctx.message?.message_id,
-      });
+      const msg = await ctx.reply(text, opts);
       await this.saveTempMessage(
-        sent.chat.id,
-        sent.message_id,
-        this.fileTtlMs,
+        ctx.chat.id,
+        msg.message_id,
+        this.defaultTtlMs,
         ctx.from.id,
       );
-
-      const warn = await ctx.reply(
-        `<b>⚠️ Warning</b>\n\n<blockquote>Due to Copyright issues, messages will be deleted after 5 minutes.\n<b>Forward the message to Saved Messages.</b></blockquote>`,
-        {
-          parse_mode: 'HTML',
-          reply_to_message_id: ctx.message?.message_id,
-        },
-      );
-      await this.saveTempMessage(
-        warn.chat.id,
-        warn.message_id,
-        this.fileTtlMs,
-        ctx.from.id,
-      );
-    }
-  }
-
-  private async handleSendMultiplePicker(ctx: any) {
-    try {
-      await ctx.answerCbQuery();
-      const data: string = ctx.callbackQuery.data; // smpick_<page>
-      const page = parseInt(data.split('_')[1], 10);
-
-      // Recover the original query from the embedded 🔍 header line
-      const msgText: string = ctx.callbackQuery.message?.text || '';
-      const headerLine = msgText.split('\n').find((l) => l.startsWith('🔍'));
-      if (!headerLine) {
-        return ctx.answerCbQuery('⚠️ Could not recover original query.');
-      }
-
-      const searchName = headerLine.replace(/^🔍\s*/, '').trim();
-      if (!searchName) {
-        return ctx.answerCbQuery('⚠️ Could not recover original query.');
-      }
-
-      // ── Replicate sendMovie() search logic exactly so count never changes ──
-      const yearMatch = searchName.match(/\b\d{4}\b/);
-      const year = yearMatch ? Number(yearMatch[0]) : null;
-
-      const query: any = { name: { $regex: searchName, $options: 'i' } };
-      if (year) query.year = year;
-
-      const [allMovies, allAnimes] = await Promise.all([
-        this.movieModel.find(query),
-        this.animeModel.find(query),
-      ]);
-
-      let movieMatches = this.findTopMatches(searchName, allMovies);
-      let animeMatches = this.findTopMatches(searchName, allAnimes);
-
-      // Same fallback as sendMovie: fuzzy empty but DB hit → use all DB results
-      if (movieMatches.length === 0 && allMovies.length > 0)
-        movieMatches = allMovies.map((doc) => ({ doc, score: 0 }));
-      if (animeMatches.length === 0 && allAnimes.length > 0)
-        animeMatches = allAnimes.map((doc) => ({ doc, score: 0 }));
-
-      if (movieMatches.length === 0 && animeMatches.length === 0) {
-        return ctx.answerCbQuery('⚠️ Results expired, please search again.');
-      }
-
-      await this.sendMultipleResultsPicker(
-        ctx,
-        movieMatches,
-        animeMatches,
-        page,
-        searchName,
-        true,
-      );
-    } catch (err) {
-      console.error('handleSendMultiplePicker error:', err.message);
     }
   }
 
@@ -1020,49 +1253,200 @@ export class MovieBotService implements OnModuleInit {
   //  Episode page  –  Movie
   // ════════════════════════════════════════════
 
-  private async sendEpisodePage(ctx: any, movie: any, page: number) {
+  private async sendEpisodePage(
+    ctx: any,
+    movie: any,
+    page: number = 0,
+    selectedTab: string = 'all',
+    selectedQuality: string = 'all',
+  ) {
     try {
-      const reversedFiles = [...movie.files].reverse();
-      const start = page * this.pageSize;
+      // 1. Detect if single batch packs and/or separate episodes exist
+      const hasSinglePacks = movie.files.some((f: any) => {
+        const ep = f.episode || extractEpisode('', f.fileName);
+        return isEpisodeRange(ep) || isEpisodeRange(f.fileName);
+      });
+      const hasSeparateEpisodes = movie.files.some((f: any) => {
+        const ep = f.episode || extractEpisode('', f.fileName);
+        return !(isEpisodeRange(ep) || isEpisodeRange(f.fileName));
+      });
+
+      const activeTab = (selectedTab || 'all').toLowerCase().trim();
+
+      // 2. Filter files based on Category Tab (all | single | sep)
+      let tabFilteredItems = movie.files.map(
+        (file: any, originalIndex: number) => ({
+          file,
+          originalIndex,
+        }),
+      );
+
+      if (activeTab === 'single') {
+        tabFilteredItems = tabFilteredItems.filter((item) => {
+          const ep =
+            item.file.episode || extractEpisode('', item.file.fileName);
+          return isEpisodeRange(ep) || isEpisodeRange(item.file.fileName);
+        });
+      } else if (activeTab === 'sep') {
+        tabFilteredItems = tabFilteredItems.filter((item) => {
+          const ep =
+            item.file.episode || extractEpisode('', item.file.fileName);
+          return !(isEpisodeRange(ep) || isEpisodeRange(item.file.fileName));
+        });
+      }
+
+      // 3. Extract distinct qualities from the tab-filtered files
+      const qualSet = new Set<string>();
+      const distinctQualities: string[] = [];
+      tabFilteredItems.forEach((it) => {
+        const q = (
+          it.file.quality ||
+          extractResolution('', it.file.fileName) ||
+          ''
+        ).trim();
+        if (q && !qualSet.has(q.toLowerCase())) {
+          qualSet.add(q.toLowerCase());
+          distinctQualities.push(q);
+        }
+      });
+      distinctQualities.sort(
+        (a, b) => getQualityWeight(a) - getQualityWeight(b),
+      );
+
+      // 4. Filter by quality if activeQual !== 'all'
+      const activeQual = (selectedQuality || 'all').toLowerCase().trim();
+      let filteredItems = tabFilteredItems;
+      if (activeQual !== 'all') {
+        filteredItems = filteredItems.filter((item) => {
+          const res = (
+            item.file.quality ||
+            extractResolution('', item.file.fileName) ||
+            ''
+          )
+            .toLowerCase()
+            .trim();
+          return (
+            res === activeQual ||
+            res.includes(activeQual) ||
+            activeQual.includes(res)
+          );
+        });
+      }
+
+      // 5. Reverse so latest episodes appear first
+      const reversedFiles = [...filteredItems].reverse();
+      const totalFiles = reversedFiles.length;
+      const totalPages = Math.max(1, Math.ceil(totalFiles / this.pageSize));
+      const validPage = Math.min(Math.max(0, page), totalPages - 1);
+      const start = validPage * this.pageSize;
       const end = start + this.pageSize;
-      const files = reversedFiles.slice(start, end);
-      const totalPages = Math.ceil(movie.files.length / this.pageSize);
+      const pageFiles = reversedFiles.slice(start, end);
 
       const buttons: any[] = [];
 
-      if (page === 0) {
-        buttons.push([
-          { text: '📥 Send All', callback_data: `all_${movie._id}` },
-        ]);
+      // Row 1: Mode Tabs [ All | Single Files | Separate ] (if both single packs and separate episodes exist)
+      if (hasSinglePacks && hasSeparateEpisodes) {
+        const tabRow: any[] = [];
+        tabRow.push({
+          text: activeTab === 'all' ? '✅ All' : '🌟 All',
+          callback_data: `tab_${movie._id}_all`,
+        });
+        tabRow.push({
+          text: activeTab === 'single' ? '✅ Single Files' : '📁 Single Files',
+          callback_data: `tab_${movie._id}_single`,
+        });
+        tabRow.push({
+          text: activeTab === 'sep' ? '✅ Separate' : '🎬 Separate',
+          callback_data: `tab_${movie._id}_sep`,
+        });
+        buttons.push(tabRow);
       }
 
-      files.forEach((file: any, idx: number) => {
-        const label = file.fileName
-          .replace(/^@\S+\s*[:-]*\s*/, '')
-          .replace(/\.mkv$/i, '');
+      // Row 2: Quality Filter Buttons (if multiple qualities exist)
+      if (distinctQualities.length > 1) {
+        const filterRow: any[] = [];
+        filterRow.push({
+          text: activeQual === 'all' ? '✅ All Quals' : '🌟 All',
+          callback_data: `qfilter_${movie._id}_${activeTab}_all`,
+        });
+        distinctQualities.forEach((q) => {
+          const isSel = q.toLowerCase() === activeQual;
+          filterRow.push({
+            text: isSel ? `✅ ${q}` : q,
+            callback_data: `qfilter_${movie._id}_${activeTab}_${q}`,
+          });
+        });
+        buttons.push(filterRow);
+      }
+
+      // Row 3: Send All Button (with count)
+      const tabNameLabel =
+        activeTab === 'single'
+          ? 'Packs'
+          : activeTab === 'sep'
+            ? 'Separate Episodes'
+            : 'Episodes';
+      const sendAllLabel =
+        activeQual !== 'all'
+          ? `📥 Send All ${selectedQuality} ${tabNameLabel} (${totalFiles})`
+          : `📥 Send All ${tabNameLabel} (${totalFiles})`;
+      buttons.push([
+        {
+          text: sendAllLabel,
+          callback_data: `all_${movie._id}_${activeTab}_${activeQual}`,
+        },
+      ]);
+
+      // Row 4..N: Episode / Pack Buttons
+      pageFiles.forEach(({ file, originalIndex }) => {
+        const ep = file.episode || extractEpisode('', file.fileName);
+        const epLabel = ep ? formatEpisodeDisplayName(ep) : 'Episode';
+        const res =
+          file.quality ||
+          extractResolution('', file.fileName) ||
+          '';
         const size = file.size || '';
-        const originalIndex = movie.files.length - 1 - (start + idx);
+        const parts: string[] = [`❖ ${epLabel}`];
+        if (res && (activeQual === 'all' || activeTab === 'all')) parts.push(res);
+        if (size) parts.push(size);
+        const btnText = parts.join(' - ');
+
         buttons.push([
           {
-            text: `[${size}] - ${label}`,
+            text: btnText,
             callback_data: `file_${movie._id}_${originalIndex}`,
           },
         ]);
       });
 
-      buttons.push(
-        this.buildNavButtons(
-          `page_${movie._id}`,
-          page,
-          totalPages,
-          movie.files.length,
-          end,
-        ),
-      );
+      // Bottom Row: Pagination Navigation
+      const nav: any[] = [];
+      if (validPage > 0) {
+        nav.push({
+          text: '◀️ Prev',
+          callback_data: `page_${movie._id}_${validPage - 1}_${activeTab}_${activeQual}`,
+        });
+      }
+      nav.push({
+        text: `Page ${validPage + 1}/${totalPages}`,
+        callback_data: 'noop',
+      });
+      if (end < totalFiles) {
+        nav.push({
+          text: 'Next ▶️',
+          callback_data: `page_${movie._id}_${validPage + 1}_${activeTab}_${activeQual}`,
+        });
+      }
+      buttons.push(nav);
 
-      const caption = `<b>${movie.name} Movie (Page ${page + 1})</b>`;
+      let headerSub = '';
+      if (activeTab === 'single') headerSub = ' (Single Files / Packs)';
+      else if (activeTab === 'sep') headerSub = ' (Separate Episodes)';
+      if (activeQual !== 'all') headerSub += ` [${selectedQuality}]`;
+
+      const caption = `🎬 <b>${this.escapeHtml(movie.name)}${headerSub}</b>\n<i>Select to download:</i>`;
       await this.replyOrEditEpisodePage(ctx, caption, buttons, movie);
-    } catch (err) {
+    } catch (err: any) {
       console.error('sendEpisodePage error:', err.message);
     }
   }
@@ -1071,49 +1455,200 @@ export class MovieBotService implements OnModuleInit {
   //  Episode page  –  Anime
   // ════════════════════════════════════════════
 
-  private async sendAnimeEpisodePage(ctx: any, anime: any, page: number) {
+  private async sendAnimeEpisodePage(
+    ctx: any,
+    anime: any,
+    page: number = 0,
+    selectedTab: string = 'all',
+    selectedQuality: string = 'all',
+  ) {
     try {
-      const reversedFiles = [...anime.files].reverse();
-      const start = page * this.pageSize;
+      // 1. Detect if single batch packs and/or separate episodes exist
+      const hasSinglePacks = anime.files.some((f: any) => {
+        const ep = f.episode || extractEpisode('', f.fileName);
+        return isEpisodeRange(ep) || isEpisodeRange(f.fileName);
+      });
+      const hasSeparateEpisodes = anime.files.some((f: any) => {
+        const ep = f.episode || extractEpisode('', f.fileName);
+        return !(isEpisodeRange(ep) || isEpisodeRange(f.fileName));
+      });
+
+      const activeTab = (selectedTab || 'all').toLowerCase().trim();
+
+      // 2. Filter files based on Category Tab (all | single | sep)
+      let tabFilteredItems = anime.files.map(
+        (file: any, originalIndex: number) => ({
+          file,
+          originalIndex,
+        }),
+      );
+
+      if (activeTab === 'single') {
+        tabFilteredItems = tabFilteredItems.filter((item) => {
+          const ep =
+            item.file.episode || extractEpisode('', item.file.fileName);
+          return isEpisodeRange(ep) || isEpisodeRange(item.file.fileName);
+        });
+      } else if (activeTab === 'sep') {
+        tabFilteredItems = tabFilteredItems.filter((item) => {
+          const ep =
+            item.file.episode || extractEpisode('', item.file.fileName);
+          return !(isEpisodeRange(ep) || isEpisodeRange(item.file.fileName));
+        });
+      }
+
+      // 3. Extract distinct qualities from the tab-filtered files
+      const qualSet = new Set<string>();
+      const distinctQualities: string[] = [];
+      tabFilteredItems.forEach((it) => {
+        const q = (
+          it.file.quality ||
+          extractResolution('', it.file.fileName) ||
+          ''
+        ).trim();
+        if (q && !qualSet.has(q.toLowerCase())) {
+          qualSet.add(q.toLowerCase());
+          distinctQualities.push(q);
+        }
+      });
+      distinctQualities.sort(
+        (a, b) => getQualityWeight(a) - getQualityWeight(b),
+      );
+
+      // 4. Filter by quality if activeQual !== 'all'
+      const activeQual = (selectedQuality || 'all').toLowerCase().trim();
+      let filteredItems = tabFilteredItems;
+      if (activeQual !== 'all') {
+        filteredItems = filteredItems.filter((item) => {
+          const res = (
+            item.file.quality ||
+            extractResolution('', item.file.fileName) ||
+            ''
+          )
+            .toLowerCase()
+            .trim();
+          return (
+            res === activeQual ||
+            res.includes(activeQual) ||
+            activeQual.includes(res)
+          );
+        });
+      }
+
+      // 5. Reverse so latest episodes appear first
+      const reversedFiles = [...filteredItems].reverse();
+      const totalFiles = reversedFiles.length;
+      const totalPages = Math.max(1, Math.ceil(totalFiles / this.pageSize));
+      const validPage = Math.min(Math.max(0, page), totalPages - 1);
+      const start = validPage * this.pageSize;
       const end = start + this.pageSize;
-      const files = reversedFiles.slice(start, end);
-      const totalPages = Math.ceil(anime.files.length / this.pageSize);
+      const pageFiles = reversedFiles.slice(start, end);
 
       const buttons: any[] = [];
 
-      if (page === 0) {
-        buttons.push([
-          { text: '📥 Send All', callback_data: `anime_all_${anime._id}` },
-        ]);
+      // Row 1: Mode Tabs [ All | Single Files | Separate ] (if both single packs and separate episodes exist)
+      if (hasSinglePacks && hasSeparateEpisodes) {
+        const tabRow: any[] = [];
+        tabRow.push({
+          text: activeTab === 'all' ? '✅ All' : '🌟 All',
+          callback_data: `anime_tab_${anime._id}_all`,
+        });
+        tabRow.push({
+          text: activeTab === 'single' ? '✅ Single Files' : '📁 Single Files',
+          callback_data: `anime_tab_${anime._id}_single`,
+        });
+        tabRow.push({
+          text: activeTab === 'sep' ? '✅ Separate' : '🎬 Separate',
+          callback_data: `anime_tab_${anime._id}_sep`,
+        });
+        buttons.push(tabRow);
       }
 
-      files.forEach((file: any, idx: number) => {
-        const label = file.fileName
-          .replace(/^@[^-_:]+[-_:]+[_]*\s*/, '')
-          .replace(/\.mkv$/i, '');
+      // Row 2: Quality Filter Buttons (if multiple qualities exist)
+      if (distinctQualities.length > 1) {
+        const filterRow: any[] = [];
+        filterRow.push({
+          text: activeQual === 'all' ? '✅ All Quals' : '🌟 All',
+          callback_data: `anime_qfilter_${anime._id}_${activeTab}_all`,
+        });
+        distinctQualities.forEach((q) => {
+          const isSel = q.toLowerCase() === activeQual;
+          filterRow.push({
+            text: isSel ? `✅ ${q}` : q,
+            callback_data: `anime_qfilter_${anime._id}_${activeTab}_${q}`,
+          });
+        });
+        buttons.push(filterRow);
+      }
+
+      // Row 3: Send All Button (with count)
+      const tabNameLabel =
+        activeTab === 'single'
+          ? 'Packs'
+          : activeTab === 'sep'
+            ? 'Separate Episodes'
+            : 'Episodes';
+      const sendAllLabel =
+        activeQual !== 'all'
+          ? `📥 Send All ${selectedQuality} ${tabNameLabel} (${totalFiles})`
+          : `📥 Send All ${tabNameLabel} (${totalFiles})`;
+      buttons.push([
+        {
+          text: sendAllLabel,
+          callback_data: `anime_all_${anime._id}_${activeTab}_${activeQual}`,
+        },
+      ]);
+
+      // Row 4..N: Episode / Pack Buttons
+      pageFiles.forEach(({ file, originalIndex }) => {
+        const ep = file.episode || extractEpisode('', file.fileName);
+        const epLabel = ep ? formatEpisodeDisplayName(ep) : 'Episode';
+        const res =
+          file.quality ||
+          extractResolution('', file.fileName) ||
+          '';
         const size = file.size || '';
-        const originalIndex = anime.files.length - 1 - (start + idx);
+        const parts: string[] = [`❖ ${epLabel}`];
+        if (res && (activeQual === 'all' || activeTab === 'all')) parts.push(res);
+        if (size) parts.push(size);
+        const btnText = parts.join(' - ');
+
         buttons.push([
           {
-            text: `[${size}] - ${label}`,
+            text: btnText,
             callback_data: `anime_file_${anime._id}_${originalIndex}`,
           },
         ]);
       });
 
-      buttons.push(
-        this.buildNavButtons(
-          `anime_page_${anime._id}`,
-          page,
-          totalPages,
-          anime.files.length,
-          end,
-        ),
-      );
+      // Bottom Row: Pagination Navigation
+      const nav: any[] = [];
+      if (validPage > 0) {
+        nav.push({
+          text: '◀️ Prev',
+          callback_data: `anime_page_${anime._id}_${validPage - 1}_${activeTab}_${activeQual}`,
+        });
+      }
+      nav.push({
+        text: `Page ${validPage + 1}/${totalPages}`,
+        callback_data: 'noop',
+      });
+      if (end < totalFiles) {
+        nav.push({
+          text: 'Next ▶️',
+          callback_data: `anime_page_${anime._id}_${validPage + 1}_${activeTab}_${activeQual}`,
+        });
+      }
+      buttons.push(nav);
 
-      const caption = `<b>${anime.name} Anime (Page ${page + 1})</b>`;
+      let headerSub = '';
+      if (activeTab === 'single') headerSub = ' (Single Files / Packs)';
+      else if (activeTab === 'sep') headerSub = ' (Separate Episodes)';
+      if (activeQual !== 'all') headerSub += ` [${selectedQuality}]`;
+
+      const caption = `🎬 <b>${this.escapeHtml(anime.name)}${headerSub}</b>\n<i>Select to download:</i>`;
       await this.replyOrEditEpisodePage(ctx, caption, buttons, anime);
-    } catch (err) {
+    } catch (err: any) {
       console.error('sendAnimeEpisodePage error:', err.message);
     }
   }
@@ -1127,18 +1662,77 @@ export class MovieBotService implements OnModuleInit {
       await ctx.answerCbQuery();
       const data: string = ctx.callbackQuery.data;
 
-      if (data.startsWith('page_')) {
-        const [, movieId, pageStr] = data.split('_');
+      if (data.startsWith('tab_')) {
+        const [, movieId, tab] = data.split('_');
         const movie = await this.movieModel.findById(movieId);
         if (!movie) return ctx.reply('❌ Movie not found.');
-        return this.sendEpisodePage(ctx, movie, parseInt(pageStr, 10));
+        return this.sendEpisodePage(ctx, movie, 0, tab, 'all');
+      }
+
+      if (data.startsWith('qfilter_')) {
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const tab = parts[2] || 'all';
+        const qual = parts.slice(3).join('_') || 'all';
+        const movie = await this.movieModel.findById(movieId);
+        if (!movie) return ctx.reply('❌ Movie not found.');
+        return this.sendEpisodePage(ctx, movie, 0, tab, qual);
+      }
+
+      if (data.startsWith('page_')) {
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const pageStr = parts[2];
+        const tab = parts[3] || 'all';
+        const qual = parts.slice(4).join('_') || 'all';
+        const movie = await this.movieModel.findById(movieId);
+        if (!movie) return ctx.reply('❌ Movie not found.');
+        return this.sendEpisodePage(
+          ctx,
+          movie,
+          parseInt(pageStr, 10),
+          tab,
+          qual,
+        );
       }
 
       if (data.startsWith('all_')) {
-        const movieId = data.split('_')[1];
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const tab = parts[2] || 'all';
+        const qual = parts.slice(3).join('_') || 'all';
         const movie = await this.movieModel.findById(movieId);
         if (!movie) return ctx.reply('❌ Movie not found.');
-        await this.sendAllFiles(ctx, movie.files, movie.name);
+
+        let filesToSend = movie.files;
+        if (tab === 'single') {
+          filesToSend = filesToSend.filter((f: any) => {
+            const ep = f.episode || extractEpisode('', f.fileName);
+            return isEpisodeRange(ep) || isEpisodeRange(f.fileName);
+          });
+        } else if (tab === 'sep') {
+          filesToSend = filesToSend.filter((f: any) => {
+            const ep = f.episode || extractEpisode('', f.fileName);
+            return !(isEpisodeRange(ep) || isEpisodeRange(f.fileName));
+          });
+        }
+
+        if (qual !== 'all') {
+          const target = qual.toLowerCase().trim();
+          filesToSend = filesToSend.filter((f: any) => {
+            const res = (
+              f.quality ||
+              extractResolution('', f.fileName) ||
+              ''
+            )
+              .toLowerCase()
+              .trim();
+            return (
+              res === target || res.includes(target) || target.includes(res)
+            );
+          });
+        }
+        await this.sendAllFiles(ctx, filesToSend, movie.name);
         return;
       }
 
@@ -1151,7 +1745,7 @@ export class MovieBotService implements OnModuleInit {
         await this.sendSingleFile(ctx, file, movie.name);
         return;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleEpisodeSelection error:', err.message);
     }
   }
@@ -1165,20 +1759,79 @@ export class MovieBotService implements OnModuleInit {
       await ctx.answerCbQuery();
       const data: string = ctx.callbackQuery.data;
 
+      if (data.startsWith('anime_tab_')) {
+        const parts = data.split('_');
+        const animeId = parts[2];
+        const tab = parts[3] || 'all';
+        const anime = await this.animeModel.findById(animeId);
+        if (!anime) return ctx.reply('❌ Anime not found.');
+        return this.sendAnimeEpisodePage(ctx, anime, 0, tab, 'all');
+      }
+
+      if (data.startsWith('anime_qfilter_')) {
+        const parts = data.split('_');
+        const animeId = parts[2];
+        const tab = parts[3] || 'all';
+        const qual = parts.slice(4).join('_') || 'all';
+        const anime = await this.animeModel.findById(animeId);
+        if (!anime) return ctx.reply('❌ Anime not found.');
+        return this.sendAnimeEpisodePage(ctx, anime, 0, tab, qual);
+      }
+
       if (data.startsWith('anime_page_')) {
         const parts = data.split('_');
         const animeId = parts[2];
-        const page = parseInt(parts[3], 10);
+        const pageStr = parts[3];
+        const tab = parts[4] || 'all';
+        const qual = parts.slice(5).join('_') || 'all';
         const anime = await this.animeModel.findById(animeId);
         if (!anime) return ctx.reply('❌ Anime not found.');
-        return this.sendAnimeEpisodePage(ctx, anime, page);
+        return this.sendAnimeEpisodePage(
+          ctx,
+          anime,
+          parseInt(pageStr, 10),
+          tab,
+          qual,
+        );
       }
 
       if (data.startsWith('anime_all_')) {
-        const animeId = data.split('_')[2];
+        const parts = data.split('_');
+        const animeId = parts[2];
+        const tab = parts[3] || 'all';
+        const qual = parts.slice(4).join('_') || 'all';
         const anime = await this.animeModel.findById(animeId);
         if (!anime) return ctx.reply('❌ Anime not found.');
-        await this.sendAllFiles(ctx, anime.files, anime.name);
+
+        let filesToSend = anime.files;
+        if (tab === 'single') {
+          filesToSend = filesToSend.filter((f: any) => {
+            const ep = f.episode || extractEpisode('', f.fileName);
+            return isEpisodeRange(ep) || isEpisodeRange(f.fileName);
+          });
+        } else if (tab === 'sep') {
+          filesToSend = filesToSend.filter((f: any) => {
+            const ep = f.episode || extractEpisode('', f.fileName);
+            return !(isEpisodeRange(ep) || isEpisodeRange(f.fileName));
+          });
+        }
+
+        if (qual !== 'all') {
+          const target = qual.toLowerCase().trim();
+          filesToSend = anime.files.filter((f: any) => {
+            const res = (
+              f.quality ||
+              extractResolution('', f.fileName) ||
+              ''
+            )
+              .toLowerCase()
+              .trim();
+            return (
+              res === target || res.includes(target) || target.includes(res)
+            );
+          });
+        }
+        await this.sendAllFiles(ctx, filesToSend, anime.name);
         return;
       }
 
@@ -1193,7 +1846,7 @@ export class MovieBotService implements OnModuleInit {
         await this.sendSingleFile(ctx, file, anime.name);
         return;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('handleAnimeEpisodeSelection error:', err.message);
     }
   }
@@ -1363,31 +2016,195 @@ export class MovieBotService implements OnModuleInit {
   async deleteMovieInDB(ctx: any) {
     try {
       if (!this.checkOwner(ctx)) return;
-      const input = ctx.message.text.split(' ').slice(1).join(' ');
-      if (!input)
+      const input = ctx.message.text.split(' ').slice(1).join(' ').trim();
+      if (!input) {
         return ctx.reply(
-          '⚠️ Please provide a movie name.\nEg: /dm <movieName>',
-          {
-            parse_mode: 'HTML',
-          },
-        );
-
-      const result = await this.movieModel.deleteOne({
-        name: { $regex: `^${this.escapeRegex(input)}$`, $options: 'i' },
-      });
-
-      if (result.deletedCount === 0) {
-        return ctx.reply(
-          '⚠️ No movie found with that name. Nothing was deleted.',
-          {
-            parse_mode: 'HTML',
-          },
+          '⚠️ <b>Please provide a Movie Name or MongoDB ID to delete:</b>\n\n' +
+            '<code>/dm Leo</code> or <code>/dm 6aa56ed6a639e988fc997ffd</code>',
+          { parse_mode: 'HTML' },
         );
       }
 
-      await ctx.reply('✅ Movie Deleted Successfully', { parse_mode: 'HTML' });
-    } catch (err) {
-      console.error('deleteMovieInDB error:', err);
+      // 1. Direct MongoDB ID match
+      if (/^[0-9a-fA-F]{24}$/.test(input)) {
+        let doc: any = await this.movieModel.findById(input);
+        let docType = 'movie';
+        if (!doc) {
+          doc = await this.animeModel.findById(input);
+          docType = 'anime';
+        }
+        if (doc) {
+          return this.sendDeleteConfirmation(ctx, doc, docType);
+        }
+      }
+
+      // 2. Search in Movies and Animes by regex
+      const movieMatches = await this.movieModel.find({
+        name: { $regex: this.escapeRegex(input), $options: 'i' },
+      });
+      const animeMatches = await this.animeModel.find({
+        name: { $regex: this.escapeRegex(input), $options: 'i' },
+      });
+
+      const allMatches: { doc: any; type: 'movie' | 'anime' }[] = [
+        ...movieMatches.map((m) => ({ doc: m, type: 'movie' as const })),
+        ...animeMatches.map((a) => ({ doc: a, type: 'anime' as const })),
+      ];
+
+      if (allMatches.length === 0) {
+        return ctx.reply(
+          `<b>🚫 No Movies or Animes found matching:</b> "<code>${this.escapeHtml(input)}</code>"`,
+          { parse_mode: 'HTML' },
+        );
+      }
+
+      // Single match -> show confirmation preview directly
+      if (allMatches.length === 1) {
+        return this.sendDeleteConfirmation(
+          ctx,
+          allMatches[0].doc,
+          allMatches[0].type,
+        );
+      }
+
+      // Multiple matches -> show interactive selector list
+      let msg = `<b>🗑️ <u>Multiple Matches Found (${allMatches.length})</u></b>\n\n`;
+      msg += `<i>Select which item you want to delete:</i>\n\n`;
+
+      const buttons: any[] = [];
+      allMatches.forEach(({ doc, type }) => {
+        const year = doc.year ? ` • ${doc.year}` : '';
+        const season = doc.season ? ` • ${doc.season}` : '';
+        const filesCount = doc.files ? ` • ${doc.files.length} Files` : '';
+        const icon = type === 'anime' ? '🎌' : '🎬';
+        const btnText = `${icon} ${doc.name}${year}${season}${filesCount}`;
+
+        buttons.push([
+          {
+            text: btnText.length > 55 ? btnText.slice(0, 52) + '...' : btnText,
+            callback_data: `dm_view_${type}_${doc._id}`,
+          },
+        ]);
+      });
+
+      buttons.push([{ text: '❌ Cancel', callback_data: 'dm_cancel' }]);
+
+      await ctx.reply(msg, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: buttons },
+      });
+    } catch (err: any) {
+      console.error('deleteMovieInDB error:', err.message);
+    }
+  }
+
+  private async sendDeleteConfirmation(
+    ctx: any,
+    doc: any,
+    type: string,
+    isEdit = false,
+  ) {
+    const year = doc.year ? `${doc.year}` : 'N/A';
+    const season = doc.season ? `${doc.season}` : 'N/A';
+    const quality = doc.quality || 'N/A';
+    const fileCount = doc.files?.length || 0;
+    const icon = type === 'anime' ? '🎌 Anime' : '🎬 Movie';
+
+    let caption = `<b>⚠️ <u>CONFIRM DELETION</u></b>\n\n`;
+    caption += `📌 <b>Type :</b> ${icon}\n`;
+    caption += `🎬 <b>Title :</b> <code>${this.escapeHtml(doc.name)}</code>\n`;
+    caption += `🗓️ <b>Year :</b> ${year}\n`;
+    caption += `💾 <b>Season :</b> ${season}\n`;
+    caption += `💿 <b>Quality :</b> ${quality}\n`;
+    caption += `📂 <b>Total Files :</b> ${fileCount} files\n`;
+    caption += `🆔 <b>Doc ID :</b> <code>${doc._id}</code>\n\n`;
+    caption += `<b>⚠️ Are you sure you want to PERMANENTLY delete this from Database?</b>\n`;
+    caption += `<i>This action cannot be undone!</i>`;
+
+    const buttons = [
+      [
+        {
+          text: '🔴 Yes, Delete Permanently',
+          callback_data: `dm_del_${type}_${doc._id}`,
+        },
+      ],
+      [{ text: '❌ Cancel', callback_data: 'dm_cancel' }],
+    ];
+
+    if (isEdit && ctx.updateType === 'callback_query') {
+      await ctx.editMessageText(caption, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: buttons },
+      });
+    } else {
+      await ctx.reply(caption, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: buttons },
+      });
+    }
+  }
+
+  private async handleDeleteMovieCallback(ctx: any) {
+    try {
+      await ctx.answerCbQuery();
+      if (!this.checkOwner(ctx)) return;
+
+      const data: string = ctx.callbackQuery.data;
+
+      if (data === 'dm_cancel') {
+        await ctx.editMessageText('<b>❌ Deletion cancelled.</b>', {
+          parse_mode: 'HTML',
+        });
+        return;
+      }
+
+      if (data.startsWith('dm_view_')) {
+        const parts = data.split('_');
+        const type = parts[2];
+        const docId = parts[3];
+        const doc: any =
+          type === 'anime'
+            ? await this.animeModel.findById(docId)
+            : await this.movieModel.findById(docId);
+        if (!doc) {
+          return ctx.editMessageText('<b>⚠️ Item not found in Database.</b>', {
+            parse_mode: 'HTML',
+          });
+        }
+        return this.sendDeleteConfirmation(ctx, doc, type, true);
+      }
+
+      if (data.startsWith('dm_del_')) {
+        const parts = data.split('_');
+        const type = parts[2];
+        const docId = parts[3];
+        const doc: any =
+          type === 'anime'
+            ? await this.animeModel.findById(docId)
+            : await this.movieModel.findById(docId);
+        if (!doc) {
+          return ctx.editMessageText(
+            '<b>⚠️ Item already deleted or not found.</b>',
+            {
+              parse_mode: 'HTML',
+            },
+          );
+        }
+        const docName = doc.name;
+        if (type === 'anime') {
+          await this.animeModel.findByIdAndDelete(docId);
+        } else {
+          await this.movieModel.findByIdAndDelete(docId);
+        }
+
+        await ctx.editMessageText(
+          `<b>🗑️ Successfully Deleted!</b>\n\n` +
+            `🎬 <b>${this.escapeHtml(docName)}</b> (<code>${docId}</code>) has been permanently removed from the Database.`,
+          { parse_mode: 'HTML' },
+        );
+      }
+    } catch (err: any) {
+      console.error('handleDeleteMovieCallback error:', err.message);
     }
   }
 
@@ -1480,50 +2297,100 @@ export class MovieBotService implements OnModuleInit {
 
   private async tryCopyPoster(ctx: any, doc: any) {
     if (doc.poster?.chatId && doc.poster?.messageId) {
-      const posterMsg = await ctx.telegram.copyMessage(
-        ctx.chat.id,
-        doc.poster.chatId,
-        doc.poster.messageId,
-      );
-      await this.saveTempMessage(
-        ctx.chat.id,
-        posterMsg.message_id,
-        this.fileTtlMs,
-        ctx.from.id,
-      );
+      try {
+        const posterMsg = await ctx.telegram.copyMessage(
+          ctx.chat.id,
+          doc.poster.chatId,
+          doc.poster.messageId,
+        );
+        await this.saveTempMessage(
+          ctx.chat.id,
+          posterMsg.message_id,
+          this.fileTtlMs,
+          ctx.from.id,
+        );
+      } catch (err: any) {
+        console.warn(
+          `⚠️ [tryCopyPoster] Failed to copy poster from Storage Channel (${doc.poster.chatId}): ${err.message}. (Ensure your bot is added to that storage channel if you want posters forwarded)`,
+        );
+      }
     }
   }
 
   private async sendAllFiles(ctx: any, files: any[], name: string) {
+    let sentCount = 0;
     for (const file of files) {
-      const message = await ctx.telegram.copyMessage(
-        ctx.chat.id,
-        file.chatId,
-        file.messageId,
-      );
-      await this.saveTempMessage(
-        ctx.chat.id,
-        message.message_id,
-        this.fileTtlMs,
-        ctx.from.id,
-      );
+      try {
+        let message: any = null;
+        if (file.chatId && file.messageId) {
+          try {
+            message = await ctx.telegram.copyMessage(
+              ctx.chat.id,
+              file.chatId,
+              file.messageId,
+            );
+          } catch (copyErr: any) {
+            console.warn(
+              `copyMessage failed, trying fileId fallback: ${copyErr.message}`,
+            );
+          }
+        }
+        if (!message && file.fileId) {
+          message = await ctx.replyWithDocument(file.fileId, {
+            caption: file.fileName || name,
+          });
+        }
+        if (message) {
+          sentCount++;
+          await this.saveTempMessage(
+            ctx.chat.id,
+            message.message_id,
+            this.fileTtlMs,
+            ctx.from.id,
+          );
+        }
+      } catch (err: any) {
+        console.error('sendAllFiles file error:', err.message);
+      }
     }
-    await this.replyFilesSent(ctx, name);
+    if (sentCount > 0) {
+      await this.replyFilesSent(ctx, name);
+    }
   }
 
   private async sendSingleFile(ctx: any, file: any, name: string) {
-    const message = await ctx.telegram.copyMessage(
-      ctx.chat.id,
-      file.chatId,
-      file.messageId,
-    );
-    await this.saveTempMessage(
-      ctx.chat.id,
-      message.message_id,
-      this.fileTtlMs,
-      ctx.from.id,
-    );
-    await this.replyFilesSent(ctx, name);
+    try {
+      let message: any = null;
+      if (file.chatId && file.messageId) {
+        try {
+          message = await ctx.telegram.copyMessage(
+            ctx.chat.id,
+            file.chatId,
+            file.messageId,
+          );
+        } catch (copyErr: any) {
+          console.warn(
+            `copyMessage failed, trying fileId fallback: ${copyErr.message}`,
+          );
+        }
+      }
+      if (!message && file.fileId) {
+        message = await ctx.replyWithDocument(file.fileId, {
+          caption: file.fileName || name,
+        });
+      }
+      if (message) {
+        await this.saveTempMessage(
+          ctx.chat.id,
+          message.message_id,
+          this.fileTtlMs,
+          ctx.from.id,
+        );
+        await this.replyFilesSent(ctx, name);
+      }
+    } catch (err: any) {
+      console.error('sendSingleFile error:', err.message);
+    }
   }
 
   private async replyFilesSent(ctx: any, name: string) {
@@ -1681,4 +2548,179 @@ export class MovieBotService implements OnModuleInit {
   escapeRegex(text: string): string {
     return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
+}
+
+function extractEpisode(text?: string, fileName?: string): string | null {
+  const combined = `${text || ''}\n${fileName || ''}`;
+  if (!combined.trim()) return null;
+
+  const episodeLineMatch = combined.match(/(?:📍)?\s*Episode\s*:\s*(.+)/i);
+  if (episodeLineMatch) {
+    const raw = episodeLineMatch[1].trim();
+    const clean = raw.split('\n')[0].trim();
+    if (clean.toUpperCase().startsWith('E')) {
+      return clean.toUpperCase();
+    }
+    return `E${clean}`;
+  }
+
+  const seMatch = combined.match(/S\d{1,2}\s*E(\d{1,4}(?:-\d{1,4})?)/i);
+  if (seMatch) {
+    return `E${seMatch[1]}`;
+  }
+
+  const epMatch = combined.match(
+    /(?:EP|Episode)\s*\(?(\d{1,4}(?:-\d{1,4})?)\)?/i,
+  );
+  if (epMatch) {
+    return `E${epMatch[1]}`;
+  }
+
+  return null;
+}
+
+function isEpisodeRange(ep?: string | null): boolean {
+  if (!ep) return false;
+  const clean = ep.trim().toUpperCase();
+  if (/BATCH|COMPLETE|ZIP|PACK/i.test(clean)) return true;
+  if (clean.length < 25) {
+    if (/^E?(\d+)\s*-\s*E?(\d+)$/.test(clean)) return true;
+    if (/EP(?:ISODE)?\s*\(?(\d+)\s*-\s*(\d+)\)?/i.test(clean)) return true;
+  }
+  if (/(?:EP|EPISODE|E)\s*\(?(\d+)\s*-\s*E?(\d+)\)?/i.test(clean)) return true;
+  if (/EPISODES?\s*\(?(\d+)\s*-\s*(\d+)\)?/i.test(clean)) return true;
+  return false;
+}
+
+function normalizeEpisodeNumber(ep?: string | null): string {
+  if (!ep) return 'E01';
+  const clean = ep.trim().toUpperCase();
+
+  const rangeMatch = clean.match(/(\d+)\s*-\s*(\d+)/);
+  if (rangeMatch) {
+    const start = rangeMatch[1].padStart(2, '0');
+    const end = rangeMatch[2].padStart(2, '0');
+    return `E${start}-${end}`;
+  }
+
+  const numMatch = clean.match(/(\d+)/);
+  if (numMatch) {
+    return `E${numMatch[1].padStart(2, '0')}`;
+  }
+  return clean.startsWith('E') ? clean : `E${clean}`;
+}
+
+function formatEpisodeDisplayName(epKey: string): string {
+  if (!epKey) return 'Episode 01';
+  const clean = epKey.trim();
+  const rangeMatch = clean.match(/(\d+)\s*-\s*(\d+)/);
+  if (rangeMatch) {
+    const start = rangeMatch[1].padStart(2, '0');
+    const end = rangeMatch[2].padStart(2, '0');
+    return `Episode (${start}-${end})`;
+  }
+  const numMatch = clean.match(/(\d+)/);
+  if (numMatch) {
+    return `Episode ${numMatch[1].padStart(2, '0')}`;
+  }
+  return clean.startsWith('Episode') ? clean : `Episode ${clean}`;
+}
+
+function extractResolution(text?: string, fileName?: string): string | null {
+  const combined = `${text || ''}\n${fileName || ''}`;
+  if (!combined.trim()) return null;
+
+  const resMatch = combined.match(
+    /\b(2160p|4K|1080p\s*10Bit|1080p|720p\s*10Bit|720p|480p|360p)\b/i,
+  );
+  if (resMatch) {
+    return resMatch[1].trim();
+  }
+  return null;
+}
+
+function getQualityWeight(resStr: string): number {
+  if (!resStr) return 0;
+  const s = resStr.toLowerCase();
+  if (s.includes('4k') || s.includes('2160p') || s.includes('uhd')) return 2160;
+  if (s.includes('1080p') && s.includes('10bit')) return 1081;
+  if (s.includes('1080p')) return 1080;
+  if (s.includes('720p') && s.includes('10bit')) return 721;
+  if (s.includes('720p')) return 720;
+  if (s.includes('480p')) return 480;
+  if (s.includes('360p')) return 360;
+  if (s.includes('240p')) return 240;
+  const numMatch = s.match(/(\d{3,4})p/);
+  if (numMatch) return parseInt(numMatch[1], 10);
+  return 0;
+}
+
+function extractAudioList(text?: string): string[] {
+  if (!text) return [];
+
+  const langMap: Record<string, string> = {
+    tam: 'Tamil',
+    tamil: 'Tamil',
+    tel: 'Telugu',
+    telugu: 'Telugu',
+    hin: 'Hindi',
+    hindi: 'Hindi',
+    eng: 'English',
+    english: 'English',
+    mal: 'Malayalam',
+    malayalam: 'Malayalam',
+    kan: 'Kannada',
+    kannada: 'Kannada',
+    kor: 'Korean',
+    korean: 'Korean',
+    jap: 'Japanese',
+    japanese: 'Japanese',
+    chi: 'Chinese',
+    chinese: 'Chinese',
+    fre: 'French',
+    french: 'French',
+    ger: 'German',
+    german: 'German',
+    spa: 'Spanish',
+    spanish: 'Spanish',
+  };
+
+  const audioLineMatch = text.match(
+    /(?:🔈|🔉|🔊|🎙️)?\s*(?:Audio|Language)\s*:\s*(.+)/i,
+  );
+  let rawAudio = '';
+  if (audioLineMatch) {
+    rawAudio = audioLineMatch[1].trim();
+  } else {
+    const bracketMatch = text.match(/\[([a-z\s+,/]+)\]/i);
+    if (bracketMatch) {
+      rawAudio = bracketMatch[1].trim();
+    }
+  }
+
+  if (!rawAudio) return [];
+
+  const tokens = rawAudio
+    .split(/[\s+,/]+/)
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+
+  const result: string[] = [];
+  for (const token of tokens) {
+    const matched = langMap[token];
+    if (matched && !result.includes(matched)) {
+      result.push(matched);
+    } else if (
+      token.length > 2 &&
+      !result.includes(token.charAt(0).toUpperCase() + token.slice(1))
+    ) {
+      if (
+        !['and', 'esub', 'aac', 'ddp', 'atmos', 'dts', 'true'].includes(token)
+      ) {
+        result.push(token.charAt(0).toUpperCase() + token.slice(1));
+      }
+    }
+  }
+
+  return result;
 }

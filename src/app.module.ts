@@ -8,21 +8,25 @@ import { AppController } from './app.controller';
 import { CommonModule } from './common/common.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AnimeModule } from './anime/anime.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.dev', '.env'],
+    }),
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         uri: configService.get<string>('MONGO_URI'),
       }),
     }),
-    // UploadBotModule,
     MovieBotModule,
     CommonModule,
     ScheduleModule.forRoot(),
     AnimeModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
