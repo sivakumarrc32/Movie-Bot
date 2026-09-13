@@ -1351,9 +1351,25 @@ export class AnimeService implements OnModuleInit {
         buttons.push(filterRow);
       }
 
+      // Check if this document represents a series or episodic content
+      const isSeriesDoc = Boolean(
+        anime.season ||
+          /S\d{1,2}/i.test(anime.name) ||
+          /Season\s*\d+/i.test(anime.name) ||
+          anime.files.some((f: any) => {
+            const ep = f.episode || extractEpisode('', f.fileName);
+            return (
+              Boolean(ep) ||
+              Boolean(f.season) ||
+              isEpisodeRange(f.fileName)
+            );
+          }),
+      );
+
       // Row 3: Send All Button (with count)
-      const tabNameLabel =
-        activeTab === 'single'
+      const tabNameLabel = !isSeriesDoc
+        ? 'Files'
+        : activeTab === 'single'
           ? 'Packs'
           : activeTab === 'sep'
             ? 'Separate Episodes'
@@ -1369,19 +1385,53 @@ export class AnimeService implements OnModuleInit {
         },
       ]);
 
-      // Row 4..N: Episode / Pack Buttons
+      // Row 4..N: File / Episode / Pack Buttons
       pageFiles.forEach(({ file, originalIndex }) => {
-        const ep = file.episode || extractEpisode('', file.fileName);
-        const epLabel = ep ? formatEpisodeDisplayName(ep) : 'Episode';
         const res =
           file.quality ||
           extractResolution('', file.fileName) ||
-          '';
+          'HD';
         const size = file.size || '';
-        const parts: string[] = [`❖ ${epLabel}`];
-        if (res && (activeQual === 'all' || activeTab === 'all')) parts.push(res);
-        if (size) parts.push(size);
-        const btnText = parts.join(' - ');
+
+        let audios: string[] = [];
+        if (Array.isArray(file.audio) && file.audio.length > 0) {
+          audios = file.audio;
+        } else if (typeof file.audio === 'string' && file.audio.trim()) {
+          audios = [file.audio.trim()];
+        } else {
+          audios = extractAudioList(file.fileName || '');
+        }
+        const audioStr =
+          audios.length > 0
+            ? audios.join(' + ')
+            : anime.audio && anime.audio.length > 0
+              ? Array.isArray(anime.audio)
+                ? anime.audio.join(' + ')
+                : anime.audio
+              : '';
+
+        let btnText: string;
+        if (!isSeriesDoc) {
+          // Standalone Movie: Quality - Size - [Audio]
+          const parts: string[] = [`❖ ${res}`];
+          if (size) parts.push(size);
+          if (audioStr) parts.push(`[${audioStr}]`);
+          btnText = parts.join(' - ');
+        } else {
+          // Series / Episodic: Episode - Quality - Size - [Audio]
+          const ep = file.episode || extractEpisode('', file.fileName);
+          const epLabel = ep
+            ? formatEpisodeDisplayName(ep)
+            : isEpisodeRange(file.fileName)
+              ? 'Batch Pack'
+              : 'Episode';
+          const parts: string[] = [`❖ ${epLabel}`];
+          if (res && (activeQual === 'all' || activeTab === 'all'))
+            parts.push(res);
+          if (size) parts.push(size);
+          if (audioStr) parts.push(`[${audioStr}]`);
+          btnText = parts.join(' - ');
+        }
 
         buttons.push([
           {
