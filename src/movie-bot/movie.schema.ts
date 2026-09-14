@@ -73,6 +73,9 @@ export class Movie extends Document {
 
   @Prop({ default: null, type: String })
   tel_poster_url: string | null;
+
+  @Prop({ type: [String], default: [] })
+  relatedMovieIds: string[];
 }
 
 export const MovieSchema = SchemaFactory.createForClass(Movie);

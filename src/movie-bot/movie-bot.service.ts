@@ -674,34 +674,16 @@ export class MovieBotService implements OnModuleInit {
 
             const buttons: any[] = [];
             matchingFiles.forEach(({ file, originalIndex }) => {
+              const ep = file.episode || extractEpisode('', file.fileName) || normKey;
+              const epToken = ep ? normalizeEpisodeNumber(ep) : 'E01';
               const res =
                 file.quality ||
                 extractResolution('', file.fileName) ||
                 'HD';
               const size = file.size || '';
-              let audios: string[] = [];
-              if (Array.isArray(file.audio) && file.audio.length > 0) {
-                audios = file.audio;
-              } else if (typeof file.audio === 'string' && file.audio.trim()) {
-                audios = [file.audio.trim()];
-              } else {
-                audios = extractAudioList(file.fileName || '');
-              }
-              const audioStr =
-                audios.length > 0
-                  ? audios.join(' + ')
-                  : movie.audio && movie.audio.length > 0
-                    ? (Array.isArray(movie.audio)
-                        ? movie.audio.join(' + ')
-                        : movie.audio)
-                    : '';
+              const fn = cleanFileName(file.fileName || '');
 
-              const parts: string[] = [];
-              if (res) parts.push(`[${res}]`);
-              if (size) parts.push(`[${size}]`);
-              if (audioStr) parts.push(`[${audioStr}]`);
-
-              const btnText = parts.join(' - ');
+              const btnText = formatButtonLabel([epToken, res, size, fn]);
               buttons.push([
                 {
                   text: btnText,
@@ -783,6 +765,7 @@ export class MovieBotService implements OnModuleInit {
 
             await this.tryCopyPoster(ctx, movie);
 
+            const isSeriesDoc = isSeriesDocHelper(movie);
             const buttons: any[] = [];
             matchingFiles.forEach(({ file, originalIndex }) => {
               const res =
@@ -790,29 +773,17 @@ export class MovieBotService implements OnModuleInit {
                 extractResolution('', file.fileName) ||
                 'HD';
               const size = file.size || '';
-              let audios: string[] = [];
-              if (Array.isArray(file.audio) && file.audio.length > 0) {
-                audios = file.audio;
-              } else if (typeof file.audio === 'string' && file.audio.trim()) {
-                audios = [file.audio.trim()];
+              const fn = cleanFileName(file.fileName || '');
+
+              let btnText: string;
+              if (isSeriesDoc) {
+                const ep = file.episode || extractEpisode('', file.fileName);
+                const epToken = ep ? normalizeEpisodeNumber(ep) : 'E01';
+                btnText = formatButtonLabel([epToken, res, size, fn]);
               } else {
-                audios = extractAudioList(file.fileName || '');
+                btnText = formatButtonLabel([res, size, fn]);
               }
-              const audioStr =
-                audios.length > 0
-                  ? audios.join(' + ')
-                  : movie.audio && movie.audio.length > 0
-                    ? Array.isArray(movie.audio)
-                      ? movie.audio.join(' + ')
-                      : movie.audio
-                    : '';
 
-              const parts: string[] = [];
-              if (res) parts.push(`[${res}]`);
-              if (size) parts.push(`[${size}]`);
-              if (audioStr) parts.push(`[${audioStr}]`);
-
-              const btnText = parts.join(' - ');
               buttons.push([
                 {
                   text: btnText,
@@ -1380,19 +1351,7 @@ export class MovieBotService implements OnModuleInit {
       }
 
       // Check if this document represents a series or episodic content
-      const isSeriesDoc = Boolean(
-        movie.season ||
-          /S\d{1,2}/i.test(movie.name) ||
-          /Season\s*\d+/i.test(movie.name) ||
-          movie.files.some((f: any) => {
-            const ep = f.episode || extractEpisode('', f.fileName);
-            return (
-              Boolean(ep) ||
-              Boolean(f.season) ||
-              isEpisodeRange(f.fileName)
-            );
-          }),
-      );
+      const isSeriesDoc = isSeriesDocHelper(movie);
 
       // Row 3: Send All Button (with count)
       const tabNameLabel = !isSeriesDoc
@@ -1420,45 +1379,17 @@ export class MovieBotService implements OnModuleInit {
           extractResolution('', file.fileName) ||
           'HD';
         const size = file.size || '';
-
-        let audios: string[] = [];
-        if (Array.isArray(file.audio) && file.audio.length > 0) {
-          audios = file.audio;
-        } else if (typeof file.audio === 'string' && file.audio.trim()) {
-          audios = [file.audio.trim()];
-        } else {
-          audios = extractAudioList(file.fileName || '');
-        }
-        const audioStr =
-          audios.length > 0
-            ? audios.join(' + ')
-            : movie.audio && movie.audio.length > 0
-              ? Array.isArray(movie.audio)
-                ? movie.audio.join(' + ')
-                : movie.audio
-              : '';
+        const fn = cleanFileName(file.fileName || '');
 
         let btnText: string;
         if (!isSeriesDoc) {
-          // Standalone Movie: Quality - Size - [Audio]
-          const parts: string[] = [`❖ ${res}`];
-          if (size) parts.push(size);
-          if (audioStr) parts.push(`[${audioStr}]`);
-          btnText = parts.join(' - ');
+          // Standalone Movie: quality | size | filename
+          btnText = formatButtonLabel([res, size, fn]);
         } else {
-          // Series / Episodic: Episode - Quality - Size - [Audio]
+          // Series / Episodic: E01 | quality | size | filename
           const ep = file.episode || extractEpisode('', file.fileName);
-          const epLabel = ep
-            ? formatEpisodeDisplayName(ep)
-            : isEpisodeRange(file.fileName)
-              ? 'Batch Pack'
-              : 'Episode';
-          const parts: string[] = [`❖ ${epLabel}`];
-          if (res && (activeQual === 'all' || activeTab === 'all'))
-            parts.push(res);
-          if (size) parts.push(size);
-          if (audioStr) parts.push(`[${audioStr}]`);
-          btnText = parts.join(' - ');
+          const epToken = ep ? normalizeEpisodeNumber(ep) : 'E01';
+          btnText = formatButtonLabel([epToken, res, size, fn]);
         }
 
         buttons.push([
@@ -1652,16 +1583,14 @@ export class MovieBotService implements OnModuleInit {
       // Row 4..N: Episode / Pack Buttons
       pageFiles.forEach(({ file, originalIndex }) => {
         const ep = file.episode || extractEpisode('', file.fileName);
-        const epLabel = ep ? formatEpisodeDisplayName(ep) : 'Episode';
+        const epToken = ep ? normalizeEpisodeNumber(ep) : 'E01';
         const res =
           file.quality ||
           extractResolution('', file.fileName) ||
-          '';
+          'HD';
         const size = file.size || '';
-        const parts: string[] = [`❖ ${epLabel}`];
-        if (res && (activeQual === 'all' || activeTab === 'all')) parts.push(res);
-        if (size) parts.push(size);
-        const btnText = parts.join(' - ');
+        const fn = cleanFileName(file.fileName || '');
+        const btnText = formatButtonLabel([epToken, res, size, fn]);
 
         buttons.push([
           {
@@ -2736,7 +2665,7 @@ function extractAudioList(text?: string): string[] {
   };
 
   const audioLineMatch = text.match(
-    /(?:🔈|🔉|🔊|🎙️)?\s*(?:Audio|Language)\s*:\s*(.+)/i,
+    /(?:🔈|🔉|🔊|🎙️)?\s*(?:Audio|Language)\s*:\s*(.+)/iu,
   );
   let rawAudio = '';
   if (audioLineMatch) {
@@ -2773,4 +2702,41 @@ function extractAudioList(text?: string): string[] {
   }
 
   return result;
+}
+
+function cleanFileName(raw?: string | null): string {
+  if (!raw) return '';
+  let name = String(raw).replace(/[\r\n]+/g, ' ').trim();
+  name = name.replace(/^.*?:-\s*/, '');
+  name = name.replace(/^@\S+\s*/, '');
+  name = name.replace(/(?:🔊|🔈|🔉|🎙️?)\s*(?:Audio|Language)\s*:\s*.+/giu, '').trim();
+  name = name.replace(/^[-_\s]+/, '').trim();
+  return name.trim();
+}
+
+function formatButtonLabel(
+  parts: (string | undefined | null)[],
+  maxLen = 64,
+): string {
+  const validParts = parts.map((p) => (p || '').trim()).filter(Boolean);
+  let text = validParts.join(' | ');
+  if (!text) return '📁 Direct File';
+  if (text.length > maxLen) {
+    text = text.slice(0, maxLen - 3).trim() + '...';
+  }
+  return text;
+}
+
+function isSeriesDocHelper(doc: any): boolean {
+  if (!doc) return false;
+  return Boolean(
+    doc.season ||
+      /S\d{1,2}/i.test(doc.name || '') ||
+      /Season\s*\d+/i.test(doc.name || '') ||
+      (Array.isArray(doc.files) &&
+        doc.files.some((f: any) => {
+          const ep = f.episode || extractEpisode('', f.fileName);
+          return Boolean(ep) || Boolean(f.season) || isEpisodeRange(f.fileName);
+        })),
+  );
 }
