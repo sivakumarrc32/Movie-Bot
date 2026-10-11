@@ -1746,27 +1746,40 @@ function extractAudioList(text?: string): string[] {
   return result;
 }
 
+function sanitizeTelegramText(text?: string | null): string {
+  if (!text) return '';
+  return String(text)
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .trim();
+}
+
 function cleanFileName(raw?: string | null): string {
   if (!raw) return '';
-  let name = String(raw).replace(/[\r\n]+/g, ' ').trim();
+  const lines = String(raw).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  let name = lines[0] || '';
   name = name.replace(/^.*?:-\s*/, '');
   name = name.replace(/^@\S+\s*/, '');
-  name = name.replace(/(?:🔊|🔈|🔉|🎙️?)\s*(?:Audio|Language)\s*:\s*.+/giu, '').trim();
-  name = name.replace(/^[-_\s]+/, '').trim();
-  return name.trim();
+  name = name.replace(/(?:📂|⚙️|💾|📍|🔉|🔈|🔊|🎙️?|📜|For Movies|For Animes|Use VLC).*/isu, '').trim();
+  name = name.replace(/^[-_\s|:]+/, '').replace(/[-_\s|:]+$/, '').trim();
+  return sanitizeTelegramText(name);
 }
 
 function formatButtonLabel(
   parts: (string | undefined | null)[],
   maxLen = 64,
 ): string {
-  const validParts = parts.map((p) => (p || '').trim()).filter(Boolean);
+  const validParts = parts
+    .map((p) => sanitizeTelegramText(p || ''))
+    .filter(Boolean);
   let text = validParts.join(' | ');
   if (!text) return '📁 Direct File';
-  if (text.length > maxLen) {
-    text = text.slice(0, maxLen - 3).trim() + '...';
+
+  const codePoints = Array.from(text);
+  if (codePoints.length > maxLen) {
+    text = codePoints.slice(0, maxLen - 3).join('').trim() + '...';
   }
-  return text;
+  return sanitizeTelegramText(text);
 }
 
 function isSeriesDocHelper(doc: any): boolean {
