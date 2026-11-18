@@ -54,6 +54,95 @@ const REACTION_EMOJIS = [
   '👏',
 ];
 
+const LANG_CODE_MAP: Record<string, string> = {
+  tamil: 'tam',
+  malayalam: 'mal',
+  telugu: 'tel',
+  kannada: 'kan',
+  hindi: 'hin',
+  english: 'eng',
+  all: 'all',
+};
+
+const CODE_TO_LANG: Record<string, string> = {
+  tam: 'tamil',
+  mal: 'malayalam',
+  tel: 'telugu',
+  kan: 'kannada',
+  hin: 'hindi',
+  eng: 'english',
+  all: 'all',
+};
+
+const LANG_PRIORITY = ['tamil', 'malayalam', 'telugu', 'kannada', 'hindi', 'english'];
+
+function getFileLanguage(file: any, defaultAudio?: string[]): string {
+  if (Array.isArray(file.audio) && file.audio.length > 0) {
+    return file.audio
+      .map((a: string) => a.trim())
+      .filter(Boolean)
+      .map((a: string) => a.charAt(0).toUpperCase() + a.slice(1).toLowerCase())
+      .join(' + ');
+  }
+  const target = `${file.fileName || ''} ${file.caption || ''}`.toLowerCase();
+  const known = ['tamil', 'telugu', 'malayalam', 'kannada', 'hindi', 'english'];
+  const found: string[] = [];
+  for (const k of known) {
+    if (new RegExp(`\\b${k}\\b`, 'i').test(target)) {
+      found.push(k.charAt(0).toUpperCase() + k.slice(1).toLowerCase());
+    }
+  }
+  if (found.length > 0) return found.join(' + ');
+  if (defaultAudio && defaultAudio.length > 0) return defaultAudio.join(' + ');
+  return 'Tamil';
+}
+
+function formatLanguageShort(langKey: string): string {
+  const parts = langKey.split('+').map((p) => p.trim());
+  if (parts.length === 1) {
+    return parts[0];
+  }
+  const SHORT_MAP: Record<string, string> = {
+    tamil: 'Tam',
+    malayalam: 'Mal',
+    telugu: 'Tel',
+    kannada: 'Kan',
+    hindi: 'Hin',
+    english: 'Eng',
+  };
+  const shortParts = parts.map(
+    (p) => SHORT_MAP[p.toLowerCase()] || p.slice(0, 3),
+  );
+  return shortParts.join('+');
+}
+
+function getGroupCode(langKey: string): string {
+  const parts = langKey.split('+').map((p) => p.trim().toLowerCase());
+  const SHORT_MAP: Record<string, string> = {
+    tamil: 'tam',
+    malayalam: 'mal',
+    telugu: 'tel',
+    kannada: 'kan',
+    hindi: 'hin',
+    english: 'eng',
+  };
+  return parts.map((p) => SHORT_MAP[p] || p.slice(0, 3)).join('-');
+}
+
+function matchesLangGroup(file: any, activeTab: string): boolean {
+  const tabLower = (activeTab || 'all').toLowerCase().trim();
+  if (tabLower === 'all' || tabLower === 'a') return true;
+  const fLangKey = getFileLanguage(file);
+  const fCode = getGroupCode(fLangKey);
+  if (fCode === tabLower) return true;
+  const normalizedKey = fLangKey.toLowerCase().replace(/[\s+]+/g, '-');
+  return (
+    normalizedKey === tabLower ||
+    fLangKey.toLowerCase().includes(tabLower) ||
+    tabLower.includes(fCode)
+  );
+}
+
 // ─────────────────────────────────────────────
 //  Service
 // ─────────────────────────────────────────────
@@ -603,8 +692,13 @@ export class MovieBotService implements OnModuleInit {
    */
   async sendMovieName(ctx: any, name: string) {
     try {
-      // ── Format 0: Direct single file payload (file:<movieId>:<fileIndex> or file_<movieId>_<fileIndex>) ──
-      if (name.startsWith('file:') || name.startsWith('file_')) {
+      // ── Format 0: Direct single file payload (file:<movieId>:<fileIndex> or file_<movieId>_<fileIndex> or M_<movieId>_<fileIndex>) ──
+      if (
+        name.startsWith('file:') ||
+        name.startsWith('file_') ||
+        name.startsWith('M_') ||
+        name.startsWith('A_')
+      ) {
         const separator = name.startsWith('file:') ? ':' : '_';
         const parts = name.split(separator);
         const movieId = parts[1];
@@ -766,6 +860,126 @@ export class MovieBotService implements OnModuleInit {
             await this.tryCopyPoster(ctx, movie);
 
             const isSeriesDoc = isSeriesDocHelper(movie);
+            const distinctLangsInQual = new Set<string>();
+            matchingFiles.forEach(({ file }) => {
+              const l = (file.audio && file.audio.length > 0) ? file.audio[0] : (file.fileName?.match(/tamil|telugu|malayalam|kannada|hindi|english/i)?.[0] || '');
+              if (l) distinctLangsInQual.add(l.toLowerCase());
+            });
+            const hasMultipleLangsInQual = distinctLangsInQual.size > 1;
+
+            const buttons: any[] = [];
+            matchingFiles.forEach(({ file, originalIndex }) => {
+              const res =
+                file.quality ||
+                extractResolution('', file.fileName) ||
+                'HD';
+              const size = file.size || '';
+              const fn = cleanFileName(file.fileName || '');
+              const fLang = (file.audio && file.audio.length > 0) ? file.audio[0] : (file.fileName?.match(/tamil|telugu|malayalam|kannada|hindi|english/i)?.[0] || '');
+              const langTag = hasMultipleLangsInQual && fLang ? `🔊 ${fLang}` : '';
+
+              let btnText: string;
+              if (isSeriesDoc) {
+                const ep = file.episode || extractEpisode('', file.fileName);
+                const epToken = ep ? normalizeEpisodeNumber(ep) : 'E01';
+                btnText = formatButtonLabel([epToken, langTag, res, size, fn]);
+              } else {
+                btnText = formatButtonLabel([langTag, res, size, fn]);
+              }
+
+              buttons.push([
+                {
+                  text: btnText,
+                  callback_data: `file_${movie._id}_${originalIndex}`,
+                },
+              ]);
+            });
+
+            const caption = `🎬 <b>${this.escapeHtml(movie.name)}</b>\n📍 <b>${targetQual.toUpperCase()}</b> — <i>Select File:</i>`;
+            const msg = await ctx.reply(caption, {
+              parse_mode: 'HTML',
+              reply_markup: { inline_keyboard: buttons },
+            });
+            await this.saveTempMessage(
+              msg.chat.id,
+              msg.message_id,
+              this.defaultTtlMs,
+              ctx.from.id,
+            );
+            return;
+          } else {
+            await this.tryCopyPoster(ctx, movie);
+            return this.sendEpisodePage(ctx, movie, 0);
+          }
+        }
+        if (movie) {
+          await this.tryCopyPoster(ctx, movie);
+          return this.sendEpisodePage(ctx, movie, 0);
+        }
+        const msg = await this.replyNotFound(ctx, movieId);
+        await this.saveTempMessage(
+          msg.chat.id,
+          msg.message_id,
+          this.defaultTtlMs,
+          ctx.from.id,
+        );
+        return;
+      }
+
+      // ── Format 0.35: Language + Quality payload (lq:<movieId>:<lang>:<qual> or lq_<movieId>_<lang>_<qual>) ──
+      if (name.startsWith('lq:') || name.startsWith('lq_')) {
+        const separator = name.startsWith('lq:') ? ':' : '_';
+        const parts = name.split(separator);
+        const movieId = parts[1];
+        const targetLang = (parts[2] || '').toLowerCase().trim();
+        const targetQual = parts.slice(3).join(separator).toLowerCase().trim();
+        let movie: any = await this.movieModel.findById(movieId);
+        if (!movie) {
+          movie = await this.animeModel.findById(movieId);
+        }
+        if (movie && movie.files && movie.files.length > 0) {
+          const matchingFiles: { file: any; originalIndex: number }[] = [];
+          movie.files.forEach((file: any, idx: number) => {
+            const res = (
+              file.quality ||
+              extractResolution('', file.fileName) ||
+              ''
+            )
+              .toLowerCase()
+              .trim();
+            const resMatch =
+              !targetQual ||
+              res === targetQual ||
+              res.includes(targetQual) ||
+              targetQual.includes(res);
+
+            const fileLangs = (file.audio || []).map((a: string) => a.toLowerCase().trim());
+            const fn = (file.fileName || '').toLowerCase();
+            const cap = (file.caption || '').toLowerCase();
+            const langMatch =
+              !targetLang ||
+              fileLangs.some((l: string) => l.includes(targetLang) || targetLang.includes(l)) ||
+              fn.includes(targetLang) ||
+              cap.includes(targetLang);
+
+            if (resMatch && langMatch) {
+              matchingFiles.push({ file, originalIndex: idx });
+            }
+          });
+
+          if (matchingFiles.length === 1) {
+            await this.sendSingleFile(ctx, matchingFiles[0].file, movie.name);
+            return;
+          } else if (matchingFiles.length > 1) {
+            matchingFiles.sort((a, b) => {
+              const sizeA = parseFloat(a.file.size) || 0;
+              const sizeB = parseFloat(b.file.size) || 0;
+              return sizeA - sizeB;
+            });
+
+            await this.tryCopyPoster(ctx, movie);
+
+            const isSeriesDoc = isSeriesDocHelper(movie);
             const buttons: any[] = [];
             matchingFiles.forEach(({ file, originalIndex }) => {
               const res =
@@ -792,7 +1006,8 @@ export class MovieBotService implements OnModuleInit {
               ]);
             });
 
-            const caption = `🎬 <b>${this.escapeHtml(movie.name)}</b>\n📍 <b>${targetQual.toUpperCase()}</b> — <i>Select File:</i>`;
+            const langDisplay = targetLang ? targetLang.charAt(0).toUpperCase() + targetLang.slice(1) : '';
+            const caption = `🎬 <b>${this.escapeHtml(movie.name)}</b>\n📍 <b>${langDisplay} — ${targetQual.toUpperCase()}</b>\n<i>Select File:</i>`;
             const msg = await ctx.reply(caption, {
               parse_mode: 'HTML',
               reply_markup: { inline_keyboard: buttons },
@@ -804,6 +1019,50 @@ export class MovieBotService implements OnModuleInit {
               ctx.from.id,
             );
             return;
+          } else {
+            await this.tryCopyPoster(ctx, movie);
+            return this.sendEpisodePage(ctx, movie, 0);
+          }
+        }
+        if (movie) {
+          await this.tryCopyPoster(ctx, movie);
+          return this.sendEpisodePage(ctx, movie, 0);
+        }
+        const msg = await this.replyNotFound(ctx, movieId);
+        await this.saveTempMessage(
+          msg.chat.id,
+          msg.message_id,
+          this.defaultTtlMs,
+          ctx.from.id,
+        );
+        return;
+      }
+
+      // ── Format 0.36: Language payload (lang:<movieId>:<lang> or lang_<movieId>_<lang>) ──
+      if (name.startsWith('lang:') || name.startsWith('lang_')) {
+        const separator = name.startsWith('lang:') ? ':' : '_';
+        const parts = name.split(separator);
+        const movieId = parts[1];
+        const targetLang = (parts.slice(2).join(separator) || '').toLowerCase().trim();
+        let movie: any = await this.movieModel.findById(movieId);
+        if (!movie) {
+          movie = await this.animeModel.findById(movieId);
+        }
+        if (movie && movie.files && movie.files.length > 0) {
+          const gCode = getGroupCode(targetLang);
+          const matchingFiles: { file: any; originalIndex: number }[] = [];
+          movie.files.forEach((file: any, idx: number) => {
+            if (matchesLangGroup(file, gCode || targetLang)) {
+              matchingFiles.push({ file, originalIndex: idx });
+            }
+          });
+
+          if (matchingFiles.length === 1) {
+            await this.sendSingleFile(ctx, matchingFiles[0].file, movie.name);
+            return;
+          } else if (matchingFiles.length > 1) {
+            await this.tryCopyPoster(ctx, movie);
+            return this.sendEpisodePage(ctx, movie, 0, gCode, 'all');
           } else {
             await this.tryCopyPoster(ctx, movie);
             return this.sendEpisodePage(ctx, movie, 0);
@@ -848,19 +1107,34 @@ export class MovieBotService implements OnModuleInit {
         return;
       }
 
-      // ── Format 0.5: Direct all files / Episode page payload (all:<movieId> or all_<movieId>) ──
-      if (name.startsWith('all:') || name.startsWith('all_')) {
-        const separator = name.startsWith('all:') ? ':' : '_';
-        const movieId = name.split(separator)[1];
-        let movie: any = await this.movieModel.findById(movieId);
-        if (!movie) {
-          movie = await this.animeModel.findById(movieId);
+      // ── Format 0.5: Direct all files / Episode page payload (all:<movieId> or all_<movieId> or ALL_M_ / ALL_A_) ──
+      if (name.startsWith('all:') || name.startsWith('all_') || name.startsWith('ALL_')) {
+        if (name.startsWith('ALL_M_') || name.startsWith('ALL_A_')) {
+          const parts = name.split('_');
+          const movieId = parts[2];
+          const tab = parts[3] || 'all';
+          const qual = parts.slice(4).join('_') || 'all';
+          let movie: any = await this.movieModel.findById(movieId);
+          if (!movie) {
+            movie = await this.animeModel.findById(movieId);
+          }
+          if (movie && movie.files && movie.files.length > 0) {
+            await this.tryCopyPoster(ctx, movie);
+            return this.sendEpisodePage(ctx, movie, 0, tab, qual);
+          }
+        } else {
+          const separator = name.startsWith('all:') ? ':' : '_';
+          const movieId = name.split(separator)[1];
+          let movie: any = await this.movieModel.findById(movieId);
+          if (!movie) {
+            movie = await this.animeModel.findById(movieId);
+          }
+          if (movie && movie.files && movie.files.length > 0) {
+            await this.tryCopyPoster(ctx, movie);
+            return this.sendEpisodePage(ctx, movie, 0);
+          }
         }
-        if (movie && movie.files && movie.files.length > 0) {
-          await this.tryCopyPoster(ctx, movie);
-          return this.sendEpisodePage(ctx, movie, 0);
-        }
-        const msg = await this.replyNotFound(ctx, movieId);
+        const msg = await this.replyNotFound(ctx, name);
         await this.saveTempMessage(
           msg.chat.id,
           msg.message_id,
@@ -1230,21 +1504,51 @@ export class MovieBotService implements OnModuleInit {
     page: number = 0,
     selectedTab: string = 'all',
     selectedQuality: string = 'all',
+    selectedEpisode: string = 'all',
   ) {
     try {
-      // 1. Detect if single batch packs and/or separate episodes exist
-      const hasSinglePacks = movie.files.some((f: any) => {
-        const ep = f.episode || extractEpisode('', f.fileName);
-        return isEpisodeRange(ep) || isEpisodeRange(f.fileName);
+      const isSeriesDoc = isSeriesDocHelper(movie);
+
+      // Extract distinct language groups from movie files (matching channel post)
+      const langGroupMap = new Map<string, any[]>();
+      (movie.files || []).forEach((f: any) => {
+        const lKey = getFileLanguage(f);
+        if (!langGroupMap.has(lKey)) {
+          langGroupMap.set(lKey, []);
+        }
+        langGroupMap.get(lKey)!.push(f);
       });
-      const hasSeparateEpisodes = movie.files.some((f: any) => {
-        const ep = f.episode || extractEpisode('', f.fileName);
-        return !(isEpisodeRange(ep) || isEpisodeRange(f.fileName));
+
+      const distinctGroups = Array.from(langGroupMap.keys()).sort((a, b) => {
+        const isTamA = a.toLowerCase().includes('tamil');
+        const isTamB = b.toLowerCase().includes('tamil');
+        if (isTamA && !isTamB) return -1;
+        if (!isTamA && isTamB) return 1;
+        return a.localeCompare(b);
       });
+      const hasMultipleGroups = distinctGroups.length > 1;
 
       const activeTab = (selectedTab || 'all').toLowerCase().trim();
+      const activeGroup = distinctGroups.find(
+        (g) => getGroupCode(g) === activeTab,
+      );
 
-      // 2. Filter files based on Category Tab (all | single | sep)
+      // Extract distinct episodes for series
+      const epTokenMap = new Map<string, { token: string; start: number; end: number; count: number }>();
+      if (isSeriesDoc) {
+        (movie.files || []).forEach((f: any) => {
+          const tok = getFileEpisodeToken(f);
+          if (!epTokenMap.has(tok)) {
+            const bounds = parseEpisodeBounds(tok);
+            epTokenMap.set(tok, { token: tok, start: bounds.start, end: bounds.end, count: 0 });
+          }
+          epTokenMap.get(tok)!.count++;
+        });
+      }
+      const distinctEpisodes = Array.from(epTokenMap.values()).sort((a, b) => a.start - b.start);
+      const hasMultipleEpisodes = isSeriesDoc && distinctEpisodes.length > 1;
+
+      // 1. Filter files based on Language Group Tab
       let tabFilteredItems = movie.files.map(
         (file: any, originalIndex: number) => ({
           file,
@@ -1252,21 +1556,13 @@ export class MovieBotService implements OnModuleInit {
         }),
       );
 
-      if (activeTab === 'single') {
-        tabFilteredItems = tabFilteredItems.filter((item) => {
-          const ep =
-            item.file.episode || extractEpisode('', item.file.fileName);
-          return isEpisodeRange(ep) || isEpisodeRange(item.file.fileName);
-        });
-      } else if (activeTab === 'sep') {
-        tabFilteredItems = tabFilteredItems.filter((item) => {
-          const ep =
-            item.file.episode || extractEpisode('', item.file.fileName);
-          return !(isEpisodeRange(ep) || isEpisodeRange(item.file.fileName));
-        });
+      if (hasMultipleGroups && activeTab !== 'all' && activeTab !== 'a') {
+        tabFilteredItems = tabFilteredItems.filter((item) =>
+          matchesLangGroup(item.file, activeTab),
+        );
       }
 
-      // 3. Extract distinct qualities from the tab-filtered files
+      // 2. Extract distinct qualities from the tab-filtered files
       const qualSet = new Set<string>();
       const distinctQualities: string[] = [];
       tabFilteredItems.forEach((it) => {
@@ -1284,7 +1580,7 @@ export class MovieBotService implements OnModuleInit {
         (a, b) => getQualityWeight(a) - getQualityWeight(b),
       );
 
-      // 4. Filter by quality if activeQual !== 'all'
+      // 3. Filter by quality if activeQual !== 'all'
       const activeQual = (selectedQuality || 'all').toLowerCase().trim();
       let filteredItems = tabFilteredItems;
       if (activeQual !== 'all') {
@@ -1304,6 +1600,29 @@ export class MovieBotService implements OnModuleInit {
         });
       }
 
+      // 4. Filter by episode if activeEp !== 'all' (Plan 2 Filtering)
+      const activeEp = (selectedEpisode || 'all').trim();
+      const cleanEp = activeEp.replace(/\s+/g, '');
+      if (hasMultipleEpisodes && activeEp !== 'all' && activeEp !== 'a') {
+        if (activeEp.startsWith('r')) {
+          const rangeMatch = activeEp.slice(1).match(/(\d+)-(\d+)/);
+          if (rangeMatch) {
+            const rStart = parseInt(rangeMatch[1], 10);
+            const rEnd = parseInt(rangeMatch[2], 10);
+            filteredItems = filteredItems.filter((item) => {
+              const tok = getFileEpisodeToken(item.file);
+              const b = parseEpisodeBounds(tok);
+              return b.start <= rEnd && b.end >= rStart;
+            });
+          }
+        } else {
+          filteredItems = filteredItems.filter((item) => {
+            const tok = getFileEpisodeToken(item.file);
+            return tok.toLowerCase() === activeEp.toLowerCase();
+          });
+        }
+      }
+
       // 5. Reverse so latest episodes appear first
       const reversedFiles = [...filteredItems].reverse();
       const totalFiles = reversedFiles.length;
@@ -1315,60 +1634,63 @@ export class MovieBotService implements OnModuleInit {
 
       const buttons: any[] = [];
 
-      // Row 1: Mode Tabs [ All | Single Files | Separate ] (if both single packs and separate episodes exist)
-      if (hasSinglePacks && hasSeparateEpisodes) {
-        const tabRow: any[] = [];
-        tabRow.push({
-          text: activeTab === 'all' ? '✅ All' : '🌟 All',
-          callback_data: `tab_${movie._id}_all`,
+      // Row 1: Option B Dropdown Pickers (Audio & Quality)
+      const pickerRow: any[] = [];
+      if (hasMultipleGroups) {
+        const shortAudio = activeGroup ? formatLanguageShort(activeGroup) : 'All';
+        pickerRow.push({
+          text: `🔊 Audio: ${shortAudio} ▾`,
+          callback_data: `pickaud_${movie._id}_${activeTab}_${activeQual}_${cleanEp}`,
         });
-        tabRow.push({
-          text: activeTab === 'single' ? '✅ Single Files' : '📁 Single Files',
-          callback_data: `tab_${movie._id}_single`,
-        });
-        tabRow.push({
-          text: activeTab === 'sep' ? '✅ Separate' : '🎬 Separate',
-          callback_data: `tab_${movie._id}_sep`,
-        });
-        buttons.push(tabRow);
       }
-
-      // Row 2: Quality Filter Buttons (if multiple qualities exist)
       if (distinctQualities.length > 1) {
-        const filterRow: any[] = [];
-        filterRow.push({
-          text: activeQual === 'all' ? '✅ All Quals' : '🌟 All',
-          callback_data: `qfilter_${movie._id}_${activeTab}_all`,
+        const shortQual = activeQual !== 'all' ? activeQual : 'All';
+        pickerRow.push({
+          text: `⚙️ Quality: ${shortQual} ▾`,
+          callback_data: `pickqual_${movie._id}_${activeTab}_${activeQual}_${cleanEp}`,
         });
-        distinctQualities.forEach((q) => {
-          const isSel = q.toLowerCase() === activeQual;
-          filterRow.push({
-            text: isSel ? `✅ ${q}` : q,
-            callback_data: `qfilter_${movie._id}_${activeTab}_${q}`,
-          });
-        });
-        buttons.push(filterRow);
+      }
+      if (pickerRow.length > 0) {
+        buttons.push(pickerRow);
       }
 
-      // Check if this document represents a series or episodic content
-      const isSeriesDoc = isSeriesDocHelper(movie);
+      // Row 2: Episode Dropdown Picker (Plan 2: Range ➔ Exact Episode Grid)
+      if (hasMultipleEpisodes) {
+        let shortEp = 'All';
+        if (activeEp !== 'all' && activeEp !== 'a') {
+          if (activeEp.startsWith('r')) {
+            const m = activeEp.slice(1).match(/(\d+)-(\d+)/);
+            shortEp = m ? `${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : activeEp.slice(1);
+          } else {
+            shortEp = activeEp;
+          }
+        }
+        buttons.push([
+          {
+            text: `📍 Episodes: ${shortEp} ▾`,
+            callback_data: `pickep_${movie._id}_${activeTab}_${activeQual}_${cleanEp}`,
+          },
+        ]);
+      }
 
       // Row 3: Send All Button (with count)
-      const tabNameLabel = !isSeriesDoc
-        ? 'Files'
-        : activeTab === 'single'
-          ? 'Packs'
-          : activeTab === 'sep'
-            ? 'Separate Episodes'
-            : 'Episodes';
-      const sendAllLabel =
-        activeQual !== 'all'
-          ? `📥 Send All ${selectedQuality} ${tabNameLabel} (${totalFiles})`
-          : `📥 Send All ${tabNameLabel} (${totalFiles})`;
+      let epLabel = '';
+      if (hasMultipleEpisodes && activeEp !== 'all' && activeEp !== 'a') {
+        if (activeEp.startsWith('r')) {
+          const m = activeEp.slice(1).match(/(\d+)-(\d+)/);
+          epLabel = m ? `Episodes ${m[1]}-${m[2]} ` : `${activeEp} `;
+        } else {
+          epLabel = `${activeEp} `;
+        }
+      }
+      const qualLabel = activeQual !== 'all' ? `${selectedQuality} ` : '';
+      const audioLabel = activeGroup ? `${formatLanguageShort(activeGroup).toUpperCase()} ` : '';
+      const baseTargetLabel = isSeriesDoc ? (epLabel ? `${epLabel}` : 'Episodes') : 'Files';
+      const sendAllLabel = `📥 Send All ${audioLabel}${qualLabel}${baseTargetLabel} (${totalFiles})`.replace(/\s+/g, ' ').trim();
       buttons.push([
         {
           text: sendAllLabel,
-          callback_data: `all_${movie._id}_${activeTab}_${activeQual}`,
+          callback_data: `all_${movie._id}_${activeTab}_${activeQual}_${cleanEp}`,
         },
       ]);
 
@@ -1380,16 +1702,18 @@ export class MovieBotService implements OnModuleInit {
           'HD';
         const size = file.size || '';
         const fn = cleanFileName(file.fileName || '');
+        const fLangKey = getFileLanguage(file);
+        const shortLang = formatLanguageShort(fLangKey);
+        const langTag = hasMultipleGroups ? `🔊 ${shortLang}` : '';
 
         let btnText: string;
         if (!isSeriesDoc) {
-          // Standalone Movie: quality | size | filename
-          btnText = formatButtonLabel([res, size, fn]);
+          // Standalone Movie: lang | quality | size | filename
+          btnText = formatButtonLabel([langTag, res, size, fn]);
         } else {
-          // Series / Episodic: E01 | quality | size | filename
-          const ep = file.episode || extractEpisode('', file.fileName);
-          const epToken = ep ? normalizeEpisodeNumber(ep) : 'E01';
-          btnText = formatButtonLabel([epToken, res, size, fn]);
+          // Series / Episodic: E01 | lang | quality | size | filename
+          const tok = getFileEpisodeToken(file);
+          btnText = formatButtonLabel([tok, langTag, res, size, fn]);
         }
 
         buttons.push([
@@ -1405,7 +1729,7 @@ export class MovieBotService implements OnModuleInit {
       if (validPage > 0) {
         nav.push({
           text: '◀️ Prev',
-          callback_data: `page_${movie._id}_${validPage - 1}_${activeTab}_${activeQual}`,
+          callback_data: `page_${movie._id}_${validPage - 1}_${activeTab}_${activeQual}_${cleanEp}`,
         });
       }
       nav.push({
@@ -1415,20 +1739,333 @@ export class MovieBotService implements OnModuleInit {
       if (end < totalFiles) {
         nav.push({
           text: 'Next ▶️',
-          callback_data: `page_${movie._id}_${validPage + 1}_${activeTab}_${activeQual}`,
+          callback_data: `page_${movie._id}_${validPage + 1}_${activeTab}_${activeQual}_${cleanEp}`,
         });
       }
       buttons.push(nav);
 
       let headerSub = '';
-      if (activeTab === 'single') headerSub = ' (Single Files / Packs)';
-      else if (activeTab === 'sep') headerSub = ' (Separate Episodes)';
+      if (activeGroup) {
+        headerSub = ` (${activeGroup})`;
+      }
       if (activeQual !== 'all') headerSub += ` [${selectedQuality}]`;
+      if (hasMultipleEpisodes && activeEp !== 'all' && activeEp !== 'a') {
+        headerSub += ` {${epLabel.trim()}}`;
+      }
 
       const caption = `🎬 <b>${this.escapeHtml(movie.name)}${headerSub}</b>\n<i>Select to download:</i>`;
       await this.replyOrEditEpisodePage(ctx, caption, buttons, movie);
     } catch (err: any) {
       console.error('sendEpisodePage error:', err.message);
+    }
+  }
+
+  private async sendAudioPickerPage(
+    ctx: any,
+    movie: any,
+    activeTab: string = 'all',
+    activeQual: string = 'all',
+    activeEp: string = 'all',
+  ) {
+    try {
+      const langGroupMap = new Map<string, any[]>();
+      (movie.files || []).forEach((f: any) => {
+        const lKey = getFileLanguage(f);
+        if (!langGroupMap.has(lKey)) {
+          langGroupMap.set(lKey, []);
+        }
+        langGroupMap.get(lKey)!.push(f);
+      });
+
+      const distinctGroups = Array.from(langGroupMap.keys()).sort((a, b) => {
+        const isTamA = a.toLowerCase().includes('tamil');
+        const isTamB = b.toLowerCase().includes('tamil');
+        if (isTamA && !isTamB) return -1;
+        if (!isTamA && isTamB) return 1;
+        return a.localeCompare(b);
+      });
+
+      const buttons: any[] = [];
+
+      // All Audio Button
+      const isAll = activeTab === 'all' || activeTab === 'a';
+      buttons.push([
+        {
+          text: `${isAll ? '✅ ' : ''}🌟 All Audio (${movie.files.length} Files)`,
+          callback_data: `tab_${movie._id}_all_${activeQual}_${activeEp}`,
+        },
+      ]);
+
+      // Per-group buttons
+      distinctGroups.forEach((groupKey) => {
+        const gCode = getGroupCode(groupKey);
+        const isSel = activeTab === gCode;
+        const count = (langGroupMap.get(groupKey) || []).length;
+        buttons.push([
+          {
+            text: `${isSel ? '✅ ' : ''}🔊 ${groupKey} (${count} Files)`,
+            callback_data: `tab_${movie._id}_${gCode}_${activeQual}_${activeEp}`,
+          },
+        ]);
+      });
+
+      // Back to Files
+      buttons.push([
+        {
+          text: '🔙 Back to Files',
+          callback_data: `backfiles_${movie._id}_${activeTab}_${activeQual}_${activeEp}`,
+        },
+      ]);
+
+      const caption = `🎬 <b>${this.escapeHtml(movie.name)}</b>\n🎧 <b>Choose Audio Language:</b>`;
+      await this.replyOrEditEpisodePage(ctx, caption, buttons, movie);
+    } catch (err: any) {
+      console.error('sendAudioPickerPage error:', err.message);
+    }
+  }
+
+  private async sendQualityPickerPage(
+    ctx: any,
+    movie: any,
+    activeTab: string = 'all',
+    activeQual: string = 'all',
+    activeEp: string = 'all',
+  ) {
+    try {
+      // 1. Filter files by active audio group first
+      let tabFiltered = movie.files || [];
+      if (activeTab !== 'all' && activeTab !== 'a') {
+        tabFiltered = tabFiltered.filter((f: any) =>
+          matchesLangGroup(f, activeTab),
+        );
+      }
+
+      // 2. Count files per quality
+      const qualMap = new Map<string, number>();
+      tabFiltered.forEach((f: any) => {
+        const q = (
+          f.quality ||
+          extractResolution('', f.fileName) ||
+          'HD'
+        ).trim();
+        const k = q.toLowerCase();
+        qualMap.set(k, (qualMap.get(k) || 0) + 1);
+      });
+
+      const distinctQualities: string[] = [];
+      tabFiltered.forEach((f: any) => {
+        const q = (
+          f.quality ||
+          extractResolution('', f.fileName) ||
+          ''
+        ).trim();
+        if (q && !distinctQualities.some((x) => x.toLowerCase() === q.toLowerCase())) {
+          distinctQualities.push(q);
+        }
+      });
+      distinctQualities.sort(
+        (a, b) => getQualityWeight(a) - getQualityWeight(b),
+      );
+
+      const buttons: any[] = [];
+
+      // All Qualities Button
+      const isAll = activeQual.toLowerCase() === 'all';
+      buttons.push([
+        {
+          text: `${isAll ? '✅ ' : ''}🌟 All Qualities (${tabFiltered.length} Files)`,
+          callback_data: `qfilter_${movie._id}_${activeTab}_all_${activeEp}`,
+        },
+      ]);
+
+      // Per-quality buttons
+      distinctQualities.forEach((q) => {
+        const isSel = activeQual.toLowerCase() === q.toLowerCase();
+        const count = qualMap.get(q.toLowerCase()) || 0;
+        buttons.push([
+          {
+            text: `${isSel ? '✅ ' : ''}💿 ${q} (${count} Files)`,
+            callback_data: `qfilter_${movie._id}_${activeTab}_${q}_${activeEp}`,
+          },
+        ]);
+      });
+
+      // Back to Files
+      buttons.push([
+        {
+          text: '🔙 Back to Files',
+          callback_data: `backfiles_${movie._id}_${activeTab}_${activeQual}_${activeEp}`,
+        },
+      ]);
+
+      const activeGroup = (movie.files || []).map((f: any) => getFileLanguage(f)).find((k: string) => getGroupCode(k) === activeTab);
+      const audioSub = activeGroup ? ` (${activeGroup})` : '';
+      const caption = `🎬 <b>${this.escapeHtml(movie.name)}${audioSub}</b>\n⚙️ <b>Choose Quality:</b>`;
+      await this.replyOrEditEpisodePage(ctx, caption, buttons, movie);
+    } catch (err: any) {
+      console.error('sendQualityPickerPage error:', err.message);
+    }
+  }
+
+  // ════════════════════════════════════════════
+  //  Plan 2: Two-Level Deep Picker (Range ➔ Exact Episode Grid)
+  // ════════════════════════════════════════════
+
+  private async sendEpisodePickerPage(
+    ctx: any,
+    movie: any,
+    activeTab: string = 'all',
+    activeQual: string = 'all',
+    activeEp: string = 'all',
+  ) {
+    try {
+      const epTokenMap = new Map<string, { token: string; start: number; end: number; count: number }>();
+      (movie.files || []).forEach((f: any) => {
+        const tok = getFileEpisodeToken(f);
+        if (!epTokenMap.has(tok)) {
+          const bounds = parseEpisodeBounds(tok);
+          epTokenMap.set(tok, { token: tok, start: bounds.start, end: bounds.end, count: 0 });
+        }
+        epTokenMap.get(tok)!.count++;
+      });
+      const distinctEpisodes = Array.from(epTokenMap.values()).sort((a, b) => a.start - b.start);
+
+      const buttons: any[][] = [];
+
+      // All Episodes Button
+      const isAll = activeEp === 'all' || activeEp === 'a';
+      buttons.push([
+        {
+          text: `${isAll ? '✅ ' : ''}🌟 All Episodes (${movie.files.length} Files)`,
+          callback_data: `epfilter_${movie._id}_${activeTab}_${activeQual}_all`,
+        },
+      ]);
+
+      if (distinctEpisodes.length <= 16) {
+        // Direct Episode Grid (3 or 4 per row)
+        const gridRow: any[] = [];
+        distinctEpisodes.forEach((ep) => {
+          const isSel = activeEp.toLowerCase() === ep.token.toLowerCase();
+          gridRow.push({
+            text: `${isSel ? '✅ ' : ''}${ep.token}`,
+            callback_data: `epfilter_${movie._id}_${activeTab}_${activeQual}_${ep.token}`,
+          });
+        });
+        for (let i = 0; i < gridRow.length; i += 4) {
+          buttons.push(gridRow.slice(i, i + 4));
+        }
+      } else {
+        // Level 1: Range Selector (Chunks of 20)
+        const maxEpNum = Math.max(...distinctEpisodes.map((e) => e.end), 20);
+        const chunkSize = maxEpNum <= 40 ? 10 : 20;
+        for (let start = 1; start <= maxEpNum; start += chunkSize) {
+          const end = start + chunkSize - 1;
+          const rangeStr = `${start}-${end}`;
+          const inRange = distinctEpisodes.filter(
+            (e) => e.start <= end && e.end >= start,
+          );
+          if (inRange.length === 0) continue;
+          const fileCount = (movie.files || []).filter((f: any) => {
+            const tok = getFileEpisodeToken(f);
+            const b = parseEpisodeBounds(tok);
+            return b.start <= end && b.end >= start;
+          }).length;
+
+          const isRangeSel = activeEp === `r${rangeStr}`;
+          buttons.push([
+            {
+              text: `${isRangeSel ? '✅ ' : ''}📁 Episodes ${start.toString().padStart(2, '0')} - ${end.toString().padStart(2, '0')} (${fileCount} Files)`,
+              callback_data: `pickepgrid_${movie._id}_${activeTab}_${activeQual}_${rangeStr}`,
+            },
+          ]);
+        }
+      }
+
+      // Back to Files
+      buttons.push([
+        {
+          text: '🔙 Back to Files',
+          callback_data: `backfiles_${movie._id}_${activeTab}_${activeQual}_${activeEp}`,
+        },
+      ]);
+
+      const caption = `🎬 <b>${this.escapeHtml(movie.name)}</b>\n📍 <b>Choose Episode Range:</b>`;
+      await this.replyOrEditEpisodePage(ctx, caption, buttons, movie);
+    } catch (err: any) {
+      console.error('sendEpisodePickerPage error:', err.message);
+    }
+  }
+
+  private async sendEpisodeGridPickerPage(
+    ctx: any,
+    movie: any,
+    activeTab: string = 'all',
+    activeQual: string = 'all',
+    rangeStr: string = '1-20',
+  ) {
+    try {
+      const parts = rangeStr.split('-');
+      const rStart = parseInt(parts[0], 10) || 1;
+      const rEnd = parseInt(parts[1], 10) || 20;
+
+      const epTokenMap = new Map<string, { token: string; start: number; end: number; count: number }>();
+      (movie.files || []).forEach((f: any) => {
+        const tok = getFileEpisodeToken(f);
+        if (!epTokenMap.has(tok)) {
+          const bounds = parseEpisodeBounds(tok);
+          epTokenMap.set(tok, { token: tok, start: bounds.start, end: bounds.end, count: 0 });
+        }
+        epTokenMap.get(tok)!.count++;
+      });
+      const distinctEpisodes = Array.from(epTokenMap.values()).sort((a, b) => a.start - b.start);
+      const inRangeTokens = distinctEpisodes.filter(
+        (e) => e.start <= rEnd && e.end >= rStart,
+      );
+
+      const rangeFilesCount = (movie.files || []).filter((f: any) => {
+        const tok = getFileEpisodeToken(f);
+        const b = parseEpisodeBounds(tok);
+        return b.start <= rEnd && b.end >= rStart;
+      }).length;
+
+      const buttons: any[][] = [];
+
+      // Button 1: All files in this range
+      buttons.push([
+        {
+          text: `🌟 All in Episodes ${rStart.toString().padStart(2, '0')}-${rEnd.toString().padStart(2, '0')} (${rangeFilesCount} Files)`,
+          callback_data: `epfilter_${movie._id}_${activeTab}_${activeQual}_r${rangeStr}`,
+        },
+      ]);
+
+      // Level 2 Grid of episode tokens in this range
+      const gridRow: any[] = [];
+      inRangeTokens.forEach((ep) => {
+        gridRow.push({
+          text: ep.token,
+          callback_data: `epfilter_${movie._id}_${activeTab}_${activeQual}_${ep.token}`,
+        });
+      });
+      for (let i = 0; i < gridRow.length; i += 4) {
+        buttons.push(gridRow.slice(i, i + 4));
+      }
+
+      // Bottom Row: Back to Ranges + Back to Files
+      buttons.push([
+        {
+          text: '🔙 Back to Ranges',
+          callback_data: `pickep_${movie._id}_${activeTab}_${activeQual}_r${rangeStr}`,
+        },
+        {
+          text: '🔙 Back to Files',
+          callback_data: `backfiles_${movie._id}_${activeTab}_${activeQual}_r${rangeStr}`,
+        },
+      ]);
+
+      const caption = `🎬 <b>${this.escapeHtml(movie.name)}</b>\n📍 <b>Select Episode (Episodes ${rStart.toString().padStart(2, '0')} - ${rEnd.toString().padStart(2, '0')}):</b>`;
+      await this.replyOrEditEpisodePage(ctx, caption, buttons, movie);
+    } catch (err: any) {
+      console.error('sendEpisodeGridPickerPage error:', err.message);
     }
   }
 
@@ -1641,21 +2278,95 @@ export class MovieBotService implements OnModuleInit {
       await ctx.answerCbQuery();
       const data: string = ctx.callbackQuery.data;
 
-      if (data.startsWith('tab_')) {
-        const [, movieId, tab] = data.split('_');
+      if (data.startsWith('pickep_')) {
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const tab = parts[2] || 'all';
+        const qual = parts[3] || 'all';
+        const ep = parts.slice(4).join('_') || 'all';
+        let movie: any = await this.movieModel.findById(movieId);
+        if (!movie) movie = await this.animeModel.findById(movieId);
+        if (!movie) return ctx.reply('❌ Movie not found.');
+        return this.sendEpisodePickerPage(ctx, movie, tab, qual, ep);
+      }
+
+      if (data.startsWith('pickepgrid_')) {
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const tab = parts[2] || 'all';
+        const qual = parts[3] || 'all';
+        const rangeStr = parts.slice(4).join('_') || '1-20';
+        let movie: any = await this.movieModel.findById(movieId);
+        if (!movie) movie = await this.animeModel.findById(movieId);
+        if (!movie) return ctx.reply('❌ Movie not found.');
+        return this.sendEpisodeGridPickerPage(ctx, movie, tab, qual, rangeStr);
+      }
+
+      if (data.startsWith('epfilter_')) {
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const tab = parts[2] || 'all';
+        const qual = parts[3] || 'all';
+        const ep = parts.slice(4).join('_') || 'all';
+        let movie: any = await this.movieModel.findById(movieId);
+        if (!movie) movie = await this.animeModel.findById(movieId);
+        if (!movie) return ctx.reply('❌ Movie not found.');
+        return this.sendEpisodePage(ctx, movie, 0, tab, qual, ep);
+      }
+
+      if (data.startsWith('pickaud_')) {
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const tab = parts[2] || 'all';
+        const qual = parts[3] || 'all';
+        const ep = parts.slice(4).join('_') || 'all';
         const movie = await this.movieModel.findById(movieId);
         if (!movie) return ctx.reply('❌ Movie not found.');
-        return this.sendEpisodePage(ctx, movie, 0, tab, 'all');
+        return this.sendAudioPickerPage(ctx, movie, tab, qual, ep);
+      }
+
+      if (data.startsWith('pickqual_')) {
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const tab = parts[2] || 'all';
+        const qual = parts[3] || 'all';
+        const ep = parts.slice(4).join('_') || 'all';
+        const movie = await this.movieModel.findById(movieId);
+        if (!movie) return ctx.reply('❌ Movie not found.');
+        return this.sendQualityPickerPage(ctx, movie, tab, qual, ep);
+      }
+
+      if (data.startsWith('backfiles_')) {
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const tab = parts[2] || 'all';
+        const qual = parts[3] || 'all';
+        const ep = parts.slice(4).join('_') || 'all';
+        const movie = await this.movieModel.findById(movieId);
+        if (!movie) return ctx.reply('❌ Movie not found.');
+        return this.sendEpisodePage(ctx, movie, 0, tab, qual, ep);
+      }
+
+      if (data.startsWith('tab_')) {
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const tab = parts[2] || 'all';
+        const qual = parts[3] || 'all';
+        const ep = parts.slice(4).join('_') || 'all';
+        const movie = await this.movieModel.findById(movieId);
+        if (!movie) return ctx.reply('❌ Movie not found.');
+        return this.sendEpisodePage(ctx, movie, 0, tab, qual, ep);
       }
 
       if (data.startsWith('qfilter_')) {
         const parts = data.split('_');
         const movieId = parts[1];
         const tab = parts[2] || 'all';
-        const qual = parts.slice(3).join('_') || 'all';
+        const qual = parts[3] || 'all';
+        const ep = parts.slice(4).join('_') || 'all';
         const movie = await this.movieModel.findById(movieId);
         if (!movie) return ctx.reply('❌ Movie not found.');
-        return this.sendEpisodePage(ctx, movie, 0, tab, qual);
+        return this.sendEpisodePage(ctx, movie, 0, tab, qual, ep);
       }
 
       if (data.startsWith('page_')) {
@@ -1663,7 +2374,8 @@ export class MovieBotService implements OnModuleInit {
         const movieId = parts[1];
         const pageStr = parts[2];
         const tab = parts[3] || 'all';
-        const qual = parts.slice(4).join('_') || 'all';
+        const qual = parts[4] || 'all';
+        const ep = parts.slice(5).join('_') || 'all';
         const movie = await this.movieModel.findById(movieId);
         if (!movie) return ctx.reply('❌ Movie not found.');
         return this.sendEpisodePage(
@@ -1672,6 +2384,7 @@ export class MovieBotService implements OnModuleInit {
           parseInt(pageStr, 10),
           tab,
           qual,
+          ep,
         );
       }
 
@@ -1679,21 +2392,26 @@ export class MovieBotService implements OnModuleInit {
         const parts = data.split('_');
         const movieId = parts[1];
         const tab = parts[2] || 'all';
-        const qual = parts.slice(3).join('_') || 'all';
+        const qual = parts[3] || 'all';
+        const ep = parts.slice(4).join('_') || 'all';
         const movie = await this.movieModel.findById(movieId);
         if (!movie) return ctx.reply('❌ Movie not found.');
 
         let filesToSend = movie.files;
         if (tab === 'single') {
           filesToSend = filesToSend.filter((f: any) => {
-            const ep = f.episode || extractEpisode('', f.fileName);
-            return isEpisodeRange(ep) || isEpisodeRange(f.fileName);
+            const fep = f.episode || extractEpisode('', f.fileName);
+            return isEpisodeRange(fep) || isEpisodeRange(f.fileName);
           });
         } else if (tab === 'sep') {
           filesToSend = filesToSend.filter((f: any) => {
-            const ep = f.episode || extractEpisode('', f.fileName);
-            return !(isEpisodeRange(ep) || isEpisodeRange(f.fileName));
+            const fep = f.episode || extractEpisode('', f.fileName);
+            return !(isEpisodeRange(fep) || isEpisodeRange(f.fileName));
           });
+        } else if (tab && tab !== 'all' && tab !== 'a') {
+          filesToSend = filesToSend.filter((f: any) =>
+            matchesLangGroup(f, tab),
+          );
         }
 
         if (qual !== 'all') {
@@ -1711,6 +2429,47 @@ export class MovieBotService implements OnModuleInit {
             );
           });
         }
+
+        if (ep && ep !== 'all' && ep !== 'a') {
+          if (ep.startsWith('r')) {
+            const rangeMatch = ep.slice(1).match(/(\d+)-(\d+)/);
+            if (rangeMatch) {
+              const rStart = parseInt(rangeMatch[1], 10);
+              const rEnd = parseInt(rangeMatch[2], 10);
+              filesToSend = filesToSend.filter((f: any) => {
+                const tok = getFileEpisodeToken(f);
+                const b = parseEpisodeBounds(tok);
+                return b.start <= rEnd && b.end >= rStart;
+              });
+            }
+          } else {
+            filesToSend = filesToSend.filter((f: any) => {
+              const tok = getFileEpisodeToken(f);
+              return tok.toLowerCase() === ep.toLowerCase();
+            });
+          }
+        }
+        await this.sendAllFiles(ctx, filesToSend, movie.name);
+        return;
+      }
+
+      if (data.startsWith('langall_')) {
+        const parts = data.split('_');
+        const movieId = parts[1];
+        const targetLang = (parts.slice(2).join('_') || '').toLowerCase().trim();
+        const movie = await this.movieModel.findById(movieId);
+        if (!movie) return ctx.reply('❌ Movie not found.');
+        const filesToSend = (movie.files || []).filter((f: any) => {
+          const fileLangs = (f.audio || []).map((a: string) => a.toLowerCase().trim());
+          const fn = (f.fileName || '').toLowerCase();
+          const cap = (f.caption || '').toLowerCase();
+          return (
+            !targetLang ||
+            fileLangs.some((l: string) => l.includes(targetLang) || targetLang.includes(l)) ||
+            fn.includes(targetLang) ||
+            cap.includes(targetLang)
+          );
+        });
         await this.sendAllFiles(ctx, filesToSend, movie.name);
         return;
       }
@@ -1793,6 +2552,10 @@ export class MovieBotService implements OnModuleInit {
             const ep = f.episode || extractEpisode('', f.fileName);
             return !(isEpisodeRange(ep) || isEpisodeRange(f.fileName));
           });
+        } else if (tab && tab !== 'all') {
+          filesToSend = filesToSend.filter((f: any) =>
+            matchesLangGroup(f, tab),
+          );
         }
 
         if (qual !== 'all') {
@@ -2275,24 +3038,43 @@ export class MovieBotService implements OnModuleInit {
   }
 
   private async tryCopyPoster(ctx: any, doc: any) {
+    let posterMsg: any = null;
     if (doc.poster?.chatId && doc.poster?.messageId) {
       try {
-        const posterMsg = await ctx.telegram.copyMessage(
+        posterMsg = await ctx.telegram.copyMessage(
           ctx.chat.id,
           doc.poster.chatId,
           doc.poster.messageId,
         );
-        await this.saveTempMessage(
-          ctx.chat.id,
-          posterMsg.message_id,
-          this.fileTtlMs,
-          ctx.from.id,
-        );
       } catch (err: any) {
         console.warn(
-          `⚠️ [tryCopyPoster] Failed to copy poster from Storage Channel (${doc.poster.chatId}): ${err.message}. (Ensure your bot is added to that storage channel if you want posters forwarded)`,
+          `⚠️ [tryCopyPoster] Failed to copy poster from Storage Channel (${doc.poster.chatId}): ${err.message}. Trying landscape url fallback...`,
         );
       }
+    }
+
+    if (!posterMsg) {
+      const posterTarget = doc.tel_poster_url || doc.poster?.fileId || doc.tmdb_poster;
+      if (posterTarget) {
+        try {
+          posterMsg = await ctx.replyWithPhoto(
+            typeof posterTarget === 'string' && posterTarget.startsWith('http')
+              ? { url: posterTarget }
+              : posterTarget,
+          );
+        } catch (photoErr: any) {
+          console.warn(`⚠️ [tryCopyPoster] replyWithPhoto failed: ${photoErr.message}`);
+        }
+      }
+    }
+
+    if (posterMsg) {
+      await this.saveTempMessage(
+        ctx.chat.id,
+        posterMsg.message_id,
+        this.fileTtlMs,
+        ctx.from.id,
+      );
     }
   }
 
@@ -2752,4 +3534,25 @@ function isSeriesDocHelper(doc: any): boolean {
           return Boolean(ep) || Boolean(f.season) || isEpisodeRange(f.fileName);
         })),
   );
+}
+
+function getFileEpisodeToken(file: any): string {
+  const ep = file.episode || extractEpisode('', file.fileName);
+  return ep ? normalizeEpisodeNumber(ep) : 'E01';
+}
+
+function parseEpisodeBounds(token: string): { start: number; end: number } {
+  const rangeMatch = token.match(/(\d+)\s*-\s*(\d+)/);
+  if (rangeMatch) {
+    return {
+      start: parseInt(rangeMatch[1], 10),
+      end: parseInt(rangeMatch[2], 10),
+    };
+  }
+  const numMatch = token.match(/(\d+)/);
+  if (numMatch) {
+    const num = parseInt(numMatch[1], 10);
+    return { start: num, end: num };
+  }
+  return { start: 1, end: 1 };
 }
