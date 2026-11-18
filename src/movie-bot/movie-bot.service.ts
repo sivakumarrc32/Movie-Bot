@@ -11,6 +11,7 @@ import { Model } from 'mongoose';
 import { Telegraf } from 'telegraf';
 import { ConfigService } from '@nestjs/config';
 import { ratio } from 'fuzzball';
+import axios from 'axios';
 
 import { Movie } from './movie.schema';
 import { User } from './user.schema';
@@ -3115,7 +3116,39 @@ export class MovieBotService implements OnModuleInit {
 
   private async tryCopyPoster(ctx: any, doc: any) {
     let posterMsg: any = null;
-    if (doc.poster?.chatId && doc.poster?.messageId) {
+
+    // 1. Prioritize Cloudinary permanent poster URL or TMDB / fileId (never expires or auto-deletes)
+    const posterTarget = doc.tel_poster_url || doc.tmdb_poster || doc.poster?.fileId;
+    if (posterTarget) {
+      try {
+        if (typeof posterTarget === 'string' && posterTarget.startsWith('http')) {
+          try {
+            posterMsg = await ctx.replyWithPhoto({ url: posterTarget });
+          } catch (urlErr: any) {
+            if (/failed to get HTTP URL content/i.test(urlErr?.message || '')) {
+              const res = await axios.get(posterTarget, {
+                responseType: 'arraybuffer',
+                timeout: 8000,
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+              });
+              posterMsg = await ctx.replyWithPhoto({
+                source: Buffer.from(res.data),
+                filename: 'poster.jpg',
+              });
+            } else {
+              throw urlErr;
+            }
+          }
+        } else {
+          posterMsg = await ctx.replyWithPhoto(posterTarget);
+        }
+      } catch (photoErr: any) {
+        console.warn(`⚠️ [tryCopyPoster] replyWithPhoto failed: ${photoErr.message}`);
+      }
+    }
+
+    // 2. Fallback to Storage Channel copyMessage if legacy poster exists
+    if (!posterMsg && doc.poster?.chatId && doc.poster?.messageId) {
       try {
         posterMsg = await ctx.telegram.copyMessage(
           ctx.chat.id,
@@ -3124,23 +3157,8 @@ export class MovieBotService implements OnModuleInit {
         );
       } catch (err: any) {
         console.warn(
-          `⚠️ [tryCopyPoster] Failed to copy poster from Storage Channel (${doc.poster.chatId}): ${err.message}. Trying landscape url fallback...`,
+          `⚠️ [tryCopyPoster] Failed to copy poster from Storage Channel (${doc.poster.chatId}): ${err.message}`,
         );
-      }
-    }
-
-    if (!posterMsg) {
-      const posterTarget = doc.tel_poster_url || doc.poster?.fileId || doc.tmdb_poster;
-      if (posterTarget) {
-        try {
-          posterMsg = await ctx.replyWithPhoto(
-            typeof posterTarget === 'string' && posterTarget.startsWith('http')
-              ? { url: posterTarget }
-              : posterTarget,
-          );
-        } catch (photoErr: any) {
-          console.warn(`⚠️ [tryCopyPoster] replyWithPhoto failed: ${photoErr.message}`);
-        }
       }
     }
 
@@ -3149,7 +3167,7 @@ export class MovieBotService implements OnModuleInit {
         ctx.chat.id,
         posterMsg.message_id,
         this.fileTtlMs,
-        ctx.from.id,
+        ctx.from?.id,
       );
     }
   }

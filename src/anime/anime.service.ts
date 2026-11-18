@@ -12,6 +12,7 @@ import { Anime } from './anime.schema';
 import { AnimeUser } from './anime.user.schema';
 import { TempMessage } from 'src/movie-bot/temp.schema';
 import { ratio } from 'fuzzball';
+import axios from 'axios';
 import { SettingsService } from '../settings/settings.service';
 
 type ChannelInfo = {
@@ -458,12 +459,7 @@ export class AnimeService implements OnModuleInit {
           return;
         }
         if (anime) {
-          if (anime.poster?.chatId && anime.poster?.messageId) {
-            const posterMsg = await ctx.telegram.copyMessage(
-              ctx.chat.id, anime.poster.chatId, anime.poster.messageId,
-            );
-            await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, this.fileTtlMs);
-          }
+          await this.tryCopyPoster(ctx, anime);
           return this.sendEpisodePage(ctx, anime, 0);
         }
       }
@@ -505,18 +501,7 @@ export class AnimeService implements OnModuleInit {
               return sizeA - sizeB;
             });
 
-            if (anime.poster?.chatId && anime.poster?.messageId) {
-              const posterMsg = await ctx.telegram.copyMessage(
-                ctx.chat.id,
-                anime.poster.chatId,
-                anime.poster.messageId,
-              );
-              await this.saveTempMessage(
-                ctx.chat.id,
-                posterMsg.message_id,
-                this.fileTtlMs,
-              );
-            }
+            await this.tryCopyPoster(ctx, anime);
 
             const buttons: any[] = [];
             matchingFiles.forEach(({ file, originalIndex }) => {
@@ -554,18 +539,7 @@ export class AnimeService implements OnModuleInit {
           }
         }
         if (anime) {
-          if (anime.poster?.chatId && anime.poster?.messageId) {
-            const posterMsg = await ctx.telegram.copyMessage(
-              ctx.chat.id,
-              anime.poster.chatId,
-              anime.poster.messageId,
-            );
-            await this.saveTempMessage(
-              ctx.chat.id,
-              posterMsg.message_id,
-              this.fileTtlMs,
-            );
-          }
+          await this.tryCopyPoster(ctx, anime);
           return this.sendEpisodePage(ctx, anime, 0);
         }
       }
@@ -607,18 +581,7 @@ export class AnimeService implements OnModuleInit {
               return sizeA - sizeB;
             });
 
-            if (anime.poster?.chatId && anime.poster?.messageId) {
-              const posterMsg = await ctx.telegram.copyMessage(
-                ctx.chat.id,
-                anime.poster.chatId,
-                anime.poster.messageId,
-              );
-              await this.saveTempMessage(
-                ctx.chat.id,
-                posterMsg.message_id,
-                this.fileTtlMs,
-              );
-            }
+            await this.tryCopyPoster(ctx, anime);
 
             const isSeriesDoc = isSeriesDocHelper(anime);
             const buttons: any[] = [];
@@ -662,18 +625,7 @@ export class AnimeService implements OnModuleInit {
           }
         }
         if (anime) {
-          if (anime.poster?.chatId && anime.poster?.messageId) {
-            const posterMsg = await ctx.telegram.copyMessage(
-              ctx.chat.id,
-              anime.poster.chatId,
-              anime.poster.messageId,
-            );
-            await this.saveTempMessage(
-              ctx.chat.id,
-              posterMsg.message_id,
-              this.fileTtlMs,
-            );
-          }
+          await this.tryCopyPoster(ctx, anime);
           return this.sendEpisodePage(ctx, anime, 0);
         }
       }
@@ -688,18 +640,7 @@ export class AnimeService implements OnModuleInit {
         const qual = parts[3] || 'all';
         const anime = await this.animeModel.findById(animeId);
         if (anime && anime.files && anime.files.length > 0) {
-          if (anime.poster?.chatId && anime.poster?.messageId) {
-            const posterMsg = await ctx.telegram.copyMessage(
-              ctx.chat.id,
-              anime.poster.chatId,
-              anime.poster.messageId,
-            );
-            await this.saveTempMessage(
-              ctx.chat.id,
-              posterMsg.message_id,
-              this.fileTtlMs,
-            );
-          }
+          await this.tryCopyPoster(ctx, anime);
           return this.sendEpisodePage(ctx, anime, 0, tabName, qual);
         }
       }
@@ -711,18 +652,7 @@ export class AnimeService implements OnModuleInit {
         const animeId = searchText.split(separator)[1];
         const anime = await this.animeModel.findById(animeId);
         if (anime && anime.files && anime.files.length > 0) {
-          if (anime.poster?.chatId && anime.poster?.messageId) {
-            const posterMsg = await ctx.telegram.copyMessage(
-              ctx.chat.id,
-              anime.poster.chatId,
-              anime.poster.messageId,
-            );
-            await this.saveTempMessage(
-              ctx.chat.id,
-              posterMsg.message_id,
-              this.fileTtlMs,
-            );
-          }
+          await this.tryCopyPoster(ctx, anime);
           return this.sendEpisodePage(ctx, anime, 0);
         }
       }
@@ -733,12 +663,7 @@ export class AnimeService implements OnModuleInit {
         const docId = searchText.slice(3).trim();
         const anime = await this.animeModel.findById(docId);
         if (anime) {
-          if (anime.poster?.chatId && anime.poster?.messageId) {
-            const posterMsg = await ctx.telegram.copyMessage(
-              ctx.chat.id, anime.poster.chatId, anime.poster.messageId,
-            );
-            await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, this.fileTtlMs);
-          }
+          await this.tryCopyPoster(ctx, anime);
           return this.sendEpisodePage(ctx, anime, 0);
         }
       }
@@ -780,12 +705,7 @@ export class AnimeService implements OnModuleInit {
 
       if (bestMatch && bestScore >= this.fuzzyMinScore) {
         await ctx.deleteMessage(ani.message_id);
-        if (bestMatch.poster?.chatId && bestMatch.poster?.messageId) {
-          const posterMsg = await ctx.telegram.copyMessage(
-            ctx.chat.id, bestMatch.poster.chatId, bestMatch.poster.messageId,
-          );
-          await this.saveTempMessage(ctx.chat.id, posterMsg.message_id, this.fileTtlMs);
-        }
+        await this.tryCopyPoster(ctx, bestMatch);
         return this.sendEpisodePage(ctx, bestMatch, 0);
       }
 
@@ -1539,6 +1459,61 @@ export class AnimeService implements OnModuleInit {
       this.fileTtlMs,
       ctx.from.id,
     );
+  }
+
+  private async tryCopyPoster(ctx: any, anime: any) {
+    let posterMsg: any = null;
+    const posterTarget = anime.tel_poster_url || anime.tmdb_poster || anime.poster?.fileId;
+    if (posterTarget) {
+      try {
+        if (typeof posterTarget === 'string' && posterTarget.startsWith('http')) {
+          try {
+            posterMsg = await ctx.replyWithPhoto({ url: posterTarget });
+          } catch (urlErr: any) {
+            if (/failed to get HTTP URL content/i.test(urlErr?.message || '')) {
+              const res = await axios.get(posterTarget, {
+                responseType: 'arraybuffer',
+                timeout: 8000,
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+              });
+              posterMsg = await ctx.replyWithPhoto({
+                source: Buffer.from(res.data),
+                filename: 'poster.jpg',
+              });
+            } else {
+              throw urlErr;
+            }
+          }
+        } else {
+          posterMsg = await ctx.replyWithPhoto(posterTarget);
+        }
+      } catch (photoErr: any) {
+        console.warn(`⚠️ [Anime tryCopyPoster] replyWithPhoto failed: ${photoErr.message}`);
+      }
+    }
+
+    if (!posterMsg && anime.poster?.chatId && anime.poster?.messageId) {
+      try {
+        posterMsg = await ctx.telegram.copyMessage(
+          ctx.chat.id,
+          anime.poster.chatId,
+          anime.poster.messageId,
+        );
+      } catch (err: any) {
+        console.warn(
+          `⚠️ [Anime tryCopyPoster] Failed to copy poster from Storage Channel (${anime.poster.chatId}): ${err.message}`,
+        );
+      }
+    }
+
+    if (posterMsg) {
+      await this.saveTempMessage(
+        ctx.chat.id,
+        posterMsg.message_id,
+        this.fileTtlMs,
+        ctx.from?.id,
+      );
+    }
   }
 
   private async saveTempMessage(
