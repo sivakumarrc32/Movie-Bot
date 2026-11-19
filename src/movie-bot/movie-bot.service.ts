@@ -1774,7 +1774,14 @@ export class MovieBotService implements OnModuleInit {
         headerSub += ` {${epLabel.trim()}}`;
       }
 
-      const caption = `🎬 <b>${this.escapeHtml(movie.name)}${headerSub}</b>\n<i>Select to download:</i>`;
+      let caption = '';
+      if (movie.caption && movie.caption.trim()) {
+        const cleanCap = this.escapeHtml(movie.caption.trim());
+        const filterInfo = headerSub ? `\n📌 <b>Filter:</b> ${this.escapeHtml(headerSub.trim())}` : '';
+        caption = `${cleanCap}${filterInfo}\n\n<i>Select to download:</i>`;
+      } else {
+        caption = `🎬 <b>${this.escapeHtml(movie.name)}${headerSub}</b>\n\n<i>Select to download:</i>`;
+      }
       await this.replyOrEditEpisodePage(ctx, caption, buttons, movie);
     } catch (err: any) {
       console.error('sendEpisodePage error:', err.message);
@@ -2326,7 +2333,14 @@ export class MovieBotService implements OnModuleInit {
       else if (activeTab === 'sep') headerSub = ' (Separate Episodes)';
       if (activeQual !== 'all') headerSub += ` [${selectedQuality}]`;
 
-      const caption = `🎬 <b>${this.escapeHtml(anime.name)}${headerSub}</b>\n<i>Select to download:</i>`;
+      let caption = '';
+      if (anime.caption && anime.caption.trim()) {
+        const cleanCap = this.escapeHtml(anime.caption.trim());
+        const filterInfo = headerSub ? `\n📌 <b>Filter:</b> ${this.escapeHtml(headerSub.trim())}` : '';
+        caption = `${cleanCap}${filterInfo}\n\n<i>Select to download:</i>`;
+      } else {
+        caption = `🎬 <b>${this.escapeHtml(anime.name)}${headerSub}</b>\n\n<i>Select to download:</i>`;
+      }
       await this.replyOrEditEpisodePage(ctx, caption, buttons, anime);
     } catch (err: any) {
       console.error('sendAnimeEpisodePage error:', err.message);
